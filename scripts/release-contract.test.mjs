@@ -3,7 +3,24 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { assertBeta, newestV1, pendingChangesets, releaseChapter } from './release-contract.mjs';
+import {
+  assertBeta,
+  newestV1,
+  pendingChangesets,
+  releaseChapter,
+  waitForPublishedIntegrity,
+} from './release-contract.mjs';
+
+test('accepted npm uploads tolerate processing delays but reject errors, mismatches, and timeout', async () => {
+  const missing = { status: 1, stderr: 'E404' };
+  const visible = { status: 0, stdout: JSON.stringify('expected-integrity') };
+  const replies = [missing, missing, visible];
+  const options = { attempts: 3, sleep: async () => {} };
+  await waitForPublishedIntegrity(() => replies.shift(), 'expected-integrity', options);
+  await assert.rejects(waitForPublishedIntegrity(() => missing, 'expected-integrity', options));
+  await assert.rejects(waitForPublishedIntegrity(() => ({ status: 1, stderr: 'E503' }), 'expected-integrity', options));
+  await assert.rejects(waitForPublishedIntegrity(() => visible, 'different-integrity', options));
+});
 
 test('beta contract rejects latest, stable versions, and alpha versions', () => {
   assert.doesNotThrow(() => assertBeta({ version: '2.0.0-beta.0', publishConfig: { tag: 'beta' } }));

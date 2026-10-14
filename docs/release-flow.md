@@ -60,3 +60,5 @@ Release delivery is serialized without cancellation. Manual recovery accepts the
 Local tests cover beta-only versions, newest-v1 selection, precise changelog extraction, and candidate/consumed-file detection. Real rollout checks exercise a feature PR, automatic lightweight version PR preparation, merged-result verification, source replay, OIDC npm publication, GitHub delivery, and default-install preservation. Record actual run links and outcomes when completed; these documents do not claim unexecuted external-fork approval or cancellation scenarios have passed.
 
 The design follows the [version-PR release Skill](https://github.com/tellok/dotai/tree/main/skills/design-pr-versionization), [Changesets prerelease guidance](https://changesets.dev/guide/prereleases), and [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/).
+
+After npm accepts an upload, delivery waits up to ten minutes for registry visibility, retrying only version-not-found responses. Other registry errors and integrity mismatches fail immediately.

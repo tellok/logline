@@ -53,3 +53,5 @@ npm 信任关系为 tellok/logline 的 release.yml，不限制 environment，允
 本地契约测试覆盖 beta 限制、最新 v1 选择、精确章节及变更集检测。真实上线将验证功能 PR、自动版本 PR、最新合并结果、来源重放、OIDC 发布与默认安装保护，并记录实际结果。不将尚未执行的 fork 审批及取消故障场景表述为已通过。
 
 依据：[版本 PR 发布 Skill](https://github.com/tellok/dotai/tree/main/skills/design-pr-versionization)、[Changesets 预发布](https://changesets.dev/guide/prereleases)、[npm 可信发布](https://docs.npmjs.com/trusted-publishers/)。
+
+npm 接受上传后，发布流程最多等待十分钟使版本在 registry 中可见，仅对版本尚不存在的响应重试。其他 registry 错误和摘要不一致立即失败。

@@ -4,7 +4,17 @@ import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { api, assertBeta, command, newestV1, project, readJson, releaseChapter, root } from './release-contract.mjs';
+import {
+  api,
+  assertBeta,
+  command,
+  newestV1,
+  project,
+  readJson,
+  releaseChapter,
+  root,
+  waitForPublishedIntegrity,
+} from './release-contract.mjs';
 
 const pkg = readJson('package.json');
 assertBeta(pkg);
@@ -48,8 +58,12 @@ else {
     registry,
   ]);
 }
-assert.equal(
-  JSON.parse(command('npm', ['view', `${pkg.name}@${pkg.version}`, 'dist.integrity', '--json', registry])),
+await waitForPublishedIntegrity(
+  () =>
+    spawnSync('npm', ['view', `${pkg.name}@${pkg.version}`, 'dist.integrity', '--json', registry], {
+      cwd: root,
+      encoding: 'utf8',
+    }),
   integrity,
 );
 assert.equal(assertLatest().beta, pkg.version, 'beta dist-tag does not identify the delivered version');
