@@ -28,8 +28,12 @@ jobs:
       - tower-run-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v6
+        env:
+          GIT_CONFIG_COUNT: 1
+          GIT_CONFIG_KEY_0: http.version
+          GIT_CONFIG_VALUE_0: HTTP/1.1
         with:
-          fetch-depth: 0
+          fetch-depth: 2
           persist-credentials: false
       - uses: actions/setup-node@v6
         with:
