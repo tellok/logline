@@ -4,21 +4,25 @@ English | [简体中文](./README.zh-CN.md)
 
 Structured frontend logging with TypeScript, Vite integration, IndexedDB persistence, and startup error capture.
 
-**v2 is experimental and lives on the [`v2` branch](https://github.com/tellok/logline/tree/v2).** The default branch remains v1. Unqualified `npm install logline` and `pnpm add logline` continue to resolve v1 under `latest`. v2 is a rewrite and does not implement the v1 constructor or storage protocol API.
+**This default branch contains the v2 beta.** For v1 installation and usage, see the [v1 README](https://github.com/tellok/logline/blob/v1/README.md). The preserved [v1 branch](https://github.com/tellok/logline/tree/v1) contains the previous default-branch implementation. v2 is a rewrite and does not implement the v1 constructor or storage protocol API.
 
 ## Installation
 
 ```sh
-# Stable v1
+# Newest stable v1 subversion, selected by latest
 npm install logline
 pnpm add logline
 
-# Experimental v2, after its first npm prerelease is published
-npm install logline@next
-pnpm add logline@next
+# Opt into the v2 beta
+npm install logline@beta
+pnpm add logline@beta
+
+# Explicitly stay on the v1 major line
+npm install logline@1
+pnpm add logline@1
 ```
 
-The initial v2 version is `2.0.0-alpha.0`. This branch provides source and release configuration; creating the branch does not publish a package. Before an npm prerelease exists, clone this branch and run `pnpm install && pnpm pack`, then install the resulting tarball. Development requires Node.js 22.12 or later and pnpm 10.20.0.
+The first beta is `2.0.0-beta.0`. The `beta` npm tag is separate from `latest`; default installs continue to use the newest published v1 minor/patch release. See [release status](https://www.npmjs.com/package/logline?activeTab=versions) for published versions. Development requires Node.js 24 and pnpm 10.20.0.
 
 ## Logging
 
@@ -112,23 +116,19 @@ HTML Interop is opt-in. It buffers up to 1,000 startup records until IndexedDB t
 
 ## Library authors
 
-Declare the experimental Logline version in both `peerDependencies` and `devDependencies`, for example `2.0.0-alpha.0`. Keep `logline` external in library builds so the consuming application provides one instance. If you use the Vite plugin while building a library, explicitly set `logPrefixMacro: false` and keep `indexedDB: false`; the final application owns attribution and persistence.
+Declare the experimental Logline version in both `peerDependencies` and `devDependencies`, for example `2.0.0-beta.0`. Keep `logline` external in library builds so the consuming application provides one instance. If you use the Vite plugin while building a library, explicitly set `logPrefixMacro: false` and keep `indexedDB: false`; the final application owns attribution and persistence.
 
 ## Development and releases
 
 ```sh
 pnpm install
-pnpm run type-check
-pnpm run lint
-pnpm run test
-pnpm run build
-pnpm pack
-
-# Maintainers: publish only to the experimental channel.
-pnpm run release:next
+pnpm run verify
+pnpm changeset
 ```
 
-`publishConfig.tag` is `next`. The publish guard requires the `v2` branch, a `2.x.x-alpha.N`, `beta.N`, or `rc.N` version, and the `next` tag. The release command explicitly selects `v2` as pnpm's publish branch. Publish locally with an authenticated npm account. The branch CI verifies changes without publishing. Keep `latest` on v1 until a separate stable-v2 release decision.
+Add a Changeset for an observable change and its Chinese summary in `.changeset/translations.json`. The lightweight default-branch workflow prepares a version PR without building the product. PR checks validate the newest merged result. Only a verified version-PR merge may build and publish a beta through npm trusted publishing in `release.yml`. The workflow builds once, validates the package, and publishes that same tarball with `--tag beta`.
+
+See the bilingual [release-flow contract](./docs/release-flow.md) for permissions, source verification, storage, recovery, and external-contributor execution boundaries.
 
 ## License
 

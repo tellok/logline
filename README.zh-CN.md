@@ -2,27 +2,31 @@
 
 [English](./README.md) | 简体中文
 
-## 实验版本与安装
+## v2 beta 与 v1 安装
 
-v2 位于独立的 [v2 分支](https://github.com/tellok/logline/tree/v2)，初始版本为 `2.0.0-alpha.0`。默认分支仍保留 v1，普通安装继续使用 npm `latest` 上的 v1。v2 重写了 API，不兼容 v1 的构造函数和存储协议。创建分支并不意味着已经发布 npm 包。
+**当前默认分支为 v2 beta。** 安装和使用 v1 请查看 [v1 README](https://github.com/tellok/logline/blob/v1/README.zh-CN.md)；[v1 分支](https://github.com/tellok/logline/tree/v1) 保留此前默认分支的实现。v2 重写了 API，不兼容 v1 的构造函数和存储协议。
 
 ```sh
-# 默认稳定版本 v1
+# 默认安装最新的稳定 v1 子版本
 npm install logline
 pnpm add logline
 
-# 首次预发布完成后安装实验版本 v2
-npm install logline@next
-pnpm add logline@next
+# 显式安装 v2 beta
+npm install logline@beta
+pnpm add logline@beta
+
+# 显式限定 v1 主版本
+npm install logline@1
+pnpm add logline@1
 ```
 
-尚未发布时，可克隆 v2 分支，执行 `pnpm install && pnpm pack`，安装生成的压缩包。开发要求 Node.js 22.12 及以上与 pnpm 10.20.0。
+首个 beta 版本为 `2.0.0-beta.0`。beta 标签与 latest 独立，普通安装继续使用已发布 v1 中最新的次版本和补丁版本。开发要求 Node.js 24 和 pnpm 10.20.0。
 
 ## 迁移与单实例
 
 原 `std-logging` 包暂时保留，逐步迁移到 `logline`。函数和类型中的 `StdLogging` / `stdLogging` 改为 `Logline` / `logline`，例如 `configureLogline`、`loglineVitePlugin`、`createLoglineAutoImport`。数据库默认名称与全局标记同步改名，历史数据库不会自动导入。详见[迁移说明](./docs/migration-v2.zh-CN.md)。
 
-npm 库应在 `peerDependencies` 和 `devDependencies` 中声明明确的实验版本（例如 `2.0.0-alpha.0`），构建时保持 `logline` 为外部依赖，由最终应用提供单一实例。库构建使用 Vite 插件时，显式设置 `logPrefixMacro: false` 并保持 `indexedDB: false`。
+npm 库应在 `peerDependencies` 和 `devDependencies` 中声明明确的实验版本（例如 `2.0.0-beta.0`），构建时保持 `logline` 为外部依赖，由最终应用提供单一实例。库构建使用 Vite 插件时，显式设置 `logPrefixMacro: false` 并保持 `indexedDB: false`。
 
 ## 使用
 
@@ -282,6 +286,10 @@ export default defineConfig({
 > `htmlInterop` 默认内联预脚本至 `<head>` 前侧，并使用 esbuild 降级至 es2016；可通过 `inline/src/position/esbuildTarget` 调整策略。
 
 内联构建产物会避开 HTML 解析器禁止的原始控制字符，可由 Vite 开发服务器和生产构建页面直接解析。
+
+## 发布流程
+
+用户可观察的更新需添加 Changeset 与中文摘要。默认分支先轻量生成版本 PR，通过最新合并结果验证后，只有合法版本 PR 的合并提交才能构建并以 beta 标签发布。详见[发布流程](./docs/release-flow.zh-CN.md)。
 
 ## 许可证
 

@@ -1,6 +1,6 @@
 {
   "name": "logline",
-  "version": "2.0.0-alpha.0",
+  "version": "1.1.5",
   "description": "Structured frontend logging with Vite integration, IndexedDB persistence, and startup error capture.",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -45,15 +45,19 @@
   "scripts": {
     "dev": "vite build --watch",
     "build": "pnpm run type-check && vite build",
-    "test": "vitest run",
-    "lint": "eslint src vite.config.ts eslint.config.ts --max-warnings 0",
+    "test": "vitest run src",
+    "lint": "eslint src scripts vite.config.ts eslint.config.ts --max-warnings 0",
     "lint:fix": "eslint . --fix",
     "clean": "rm -rf dist",
     "type-check": "tsc --noEmit",
-    "format:check": "prettier src docs skills scripts .github *.json *.ts *.md --check",
+    "format:check": "prettier src docs skills scripts .github .changeset .release '*.json' '*.ts' '*.md' --check",
     "prepack": "pnpm run build",
     "prepublishOnly": "node scripts/check-prerelease.mjs && pnpm run type-check && pnpm run lint && pnpm run test",
-    "release:next": "pnpm publish --publish-branch v2 --tag next --access public"
+    "changeset": "changeset",
+    "version:prepare": "node scripts/prepare-version.mjs",
+    "release:beta": "node scripts/publish-release.mjs",
+    "verify": "node scripts/verify.mjs",
+    "test:release": "node --test --test-reporter=tap scripts/*.test.mjs"
   },
   "keywords": [
     "logging",
@@ -74,28 +78,30 @@
     "source-map-js": "^1.2.1"
   },
   "devDependencies": {
+    "@changesets/cli": "2.29.7",
     "@microsoft/api-extractor": "^7.55.0",
     "@types/babel__traverse": "^7.20.6",
+    "@types/node": "^24.10.1",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "fake-indexeddb": "^6.2.5",
     "globals": "^16.5.0",
+    "jiti": "^2.6.1",
+    "prettier": "^3.1.1",
+    "semver": "7.7.3",
     "typescript": "5.8.2",
     "typescript-eslint": "^8.46.4",
     "unplugin-dts": "1.0.0-beta.6",
     "vite": "^6.2.1",
     "vite-plugin-externalize-deps": "^0.10.0",
-    "vitest": "^4.0.13",
-    "@types/node": "^24.10.1",
-    "prettier": "^3.1.1",
-    "jiti": "^2.6.1"
+    "vitest": "^4.0.13"
   },
   "peerDependencies": {
     "vite": "^6.2.1 || ^7.0.0 || ^8.0.0"
   },
   "publishConfig": {
     "access": "public",
-    "tag": "next",
+    "tag": "beta",
     "registry": "https://registry.npmjs.org/"
   },
   "repository": {
@@ -105,7 +111,7 @@
   "bugs": {
     "url": "https://github.com/tellok/logline/issues"
   },
-  "homepage": "https://github.com/tellok/logline/tree/v2#readme",
+  "homepage": "https://github.com/tellok/logline#readme",
   "packageManager": "pnpm@10.20.0",
   "engines": {
     "node": ">=22.12.0"

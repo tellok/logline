@@ -9,11 +9,11 @@ description: Add, configure, or debug structured frontend logging with experimen
 
 This Skill applies to experimental v2 only. Inspect package.json and confirm a 2.x prerelease is installed. Unqualified npm/pnpm installation still selects stable v1, whose constructor and storage protocol API differ from v2.
 
-After the first npm prerelease, install `logline@next` explicitly. Before publication, install a tarball built from the v2 branch. Use `logline` in import paths.
+Install `logline@beta` explicitly. Before publication, install a tarball built from the default branch. Use `logline` in import paths.
 
 ## Applications and libraries
 
-A final application installs Logline directly. An npm library declares the experimental version in both peerDependencies and devDependencies, for example `2.0.0-alpha.0`, and keeps Logline external in its build. This lets the final application provide one compatible instance. Do not assume API compatibility between prerelease versions.
+A final application installs Logline directly. An npm library declares the experimental version in both peerDependencies and devDependencies, for example `2.0.0-beta.0`, and keeps Logline external in its build. This lets the final application provide one compatible instance. Do not assume API compatibility between prerelease versions.
 
 For library builds using `loglineVitePlugin`, explicitly set `logPrefixMacro: false` and keep `indexedDB: false`. The final application controls dependency attribution, database initialization, and HTML startup capture. Never hard-code a library's own package name or source locations into published log messages. Keep ordinary runtime dependencies external so the consumer can identify their actual package boundaries.
 
