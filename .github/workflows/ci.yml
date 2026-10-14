@@ -38,10 +38,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - uses: pnpm/action-setup@v6
-        env:
-          npm_config_store_dir: ${{ runner.temp }}/pnpm-bootstrap-store
-          pnpm_config_store_dir: ${{ runner.temp }}/pnpm-bootstrap-store
+      - uses: pnpm/action-setup@v4
       - run: node scripts/check-pr-context.mjs
         env:
           GH_TOKEN: ${{ github.token }}
