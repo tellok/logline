@@ -1,6 +1,6 @@
 # Logline
 
-[English](./README.md) | 简体中文 | [在线文档](https://tellok.github.io/logline/zh/)
+[English](./README.md) | 简体中文
 
 面向 JavaScript 和 TypeScript 的前端日志工具，以客户端存储为优先：通过 IndexedDB 在本地保存日志，由应用按需读取并上报。同时提供 Vite 集成与启动阶段错误捕获。
 

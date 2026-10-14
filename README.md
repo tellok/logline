@@ -1,6 +1,6 @@
 # Logline
 
-English | [简体中文](./README.zh-CN.md) | [Online documentation](https://tellok.github.io/logline/)
+English | [简体中文](./README.zh-CN.md)
 
 Local-first frontend logging for JavaScript and TypeScript: store logs on the client with IndexedDB, then let your application retrieve and report them on demand. Includes Vite integration and startup error capture.
 
