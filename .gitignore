@@ -1,15 +1,5 @@
-# node
-node_modules
-npm-debug.log
-
-# bower
-bower_components
-
-# editors
-.vscode
-.idea
-*.swp
-*.swo
-
-# system
+node_modules/
+dist/
+coverage/
+*.tgz
 .DS_Store

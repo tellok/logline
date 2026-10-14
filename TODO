@@ -1,9 +1,0 @@
-WIP
-[ ] IndexedDB: cursor.continue() meet `throw InvalidStateError when the cursor is being iterated`
-[ ] spread arguments support, such as log.info('xx', true, { data: 1 }, 'b');
-
-CONSIDERING
-[ ] fullfill error handling
-[ ] 修复phantomjs无法正确测试indexeddb的问题，phantomjs在关闭数据后才能读取到新存储的内容
-[ ] add a tag, to indicate pending operations
-[ ] selecte random background color per namespace for the outpus on developer tool's console panel
