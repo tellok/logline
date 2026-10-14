@@ -16,50 +16,58 @@ concurrency:
   cancel-in-progress: false
 jobs:
   eligibility:
-    runs-on: ubuntu-latest
+    runs-on:
+    - self-hosted
+    - tower
+    - ubuntu-latest
+    - tower-run-${{ github.run_id }}-${{ github.run_attempt }}
     outputs:
       eligible: ${{ steps.proof.outputs.eligible }}
       source_sha: ${{ steps.proof.outputs.source_sha }}
     steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ inputs.source_sha || github.sha }}
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - id: proof
-        run: node scripts/verify-release.mjs
-        env:
-          GH_TOKEN: ${{ github.token }}
+    - uses: actions/checkout@v6
+      with:
+        ref: ${{ inputs.source_sha || github.sha }}
+        fetch-depth: 0
+        persist-credentials: false
+    - uses: pnpm/action-setup@v6
+    - uses: actions/setup-node@v6
+      with:
+        node-version: 24
+        cache: pnpm
+    - run: pnpm install --frozen-lockfile
+    - id: proof
+      run: node scripts/verify-release.mjs
+      env:
+        GH_TOKEN: ${{ github.token }}
   publish:
     needs: eligibility
     if: needs.eligibility.outputs.eligible == 'true'
-    runs-on: ubuntu-latest
+    runs-on:
+    - self-hosted
+    - tower
+    - ubuntu-latest
+    - tower-run-${{ github.run_id }}-${{ github.run_attempt }}
     permissions:
       contents: write
       pull-requests: read
       id-token: write
     steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.eligibility.outputs.source_sha }}
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          registry-url: https://registry.npmjs.org
-          package-manager-cache: false
-      - run: npm install --global npm@11.15.0
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm run verify
-      - run: pnpm run release:beta
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_VERIFIED_SHA: ${{ needs.eligibility.outputs.source_sha }}
+    - uses: actions/checkout@v6
+      with:
+        ref: ${{ needs.eligibility.outputs.source_sha }}
+        fetch-depth: 0
+        persist-credentials: false
+    - uses: pnpm/action-setup@v6
+    - uses: actions/setup-node@v6
+      with:
+        node-version: 24
+        registry-url: https://registry.npmjs.org
+        package-manager-cache: false
+    - run: npm install --global npm@11.15.0
+    - run: pnpm install --frozen-lockfile
+    - run: pnpm run verify
+    - run: pnpm run release:beta
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RELEASE_VERIFIED_SHA: ${{ needs.eligibility.outputs.source_sha }}
