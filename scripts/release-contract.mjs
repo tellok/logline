@@ -5,7 +5,24 @@ import { appendFileSync, existsSync, readFileSync, readdirSync, writeFileSync } 
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { setTimeout } from 'node:timers/promises';
 const require = createRequire(import.meta.url);
+
+/** Wait for npm processing after an accepted upload; never retry digest mismatches or other registry errors. */
+export const waitForPublishedIntegrity = async (query, expected, options = {}) => {
+  const { attempts = 60, delay = 10000, sleep = setTimeout } = options;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const result = query();
+    if (result.status === 0) {
+      assert.equal(JSON.parse(result.stdout), expected, 'Published npm content differs');
+      return;
+    }
+    assert.match(result.stderr, /E404/, 'Registry failure is not a publication processing delay');
+    assert.ok(attempt + 1 < attempts, 'npm publication did not become available within the processing deadline');
+    process.stdout.write('npm is processing the accepted upload; waiting for registry visibility.\n');
+    await sleep(delay);
+  }
+};
 
 export const VERSION_BRANCH = 'codex/version-packages';
 export const VERSION_MARKER = '<!-- logline-version-pr -->';
