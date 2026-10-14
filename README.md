@@ -1,192 +1,135 @@
-Logline
-=======
+# Logline v2
 
 English | [简体中文](./README.zh-CN.md)
 
-> This README describes stable v1. Experimental v2 is developed independently on the [v2 branch](https://github.com/tellok/logline/tree/v2), with a [separate README](https://github.com/tellok/logline/blob/v2/README.md). Default npm/pnpm installs continue to use v1 under `latest`. Once published, v2 is available explicitly as `logline@next`.
+Structured frontend logging with TypeScript, Vite integration, IndexedDB persistence, and startup error capture.
 
-Logline is a light-weighted, useful log agent for front-end on the client-side.
+**This default branch contains the v2 beta.** For v1 installation and usage, see the [v1 README](https://github.com/tellok/logline/blob/v1/README.md). The preserved [v1 branch](https://github.com/tellok/logline/tree/v1) contains the previous default-branch implementation. v2 is a rewrite and does not implement the v1 constructor or storage protocol API.
 
-Why position problems is difficult for the front-end?
----------------------------------------------------
+## Installation
 
-Most front-enders should have similar experience, when codes are deployed for production, running on countless clients. In most caes, we can only guess the problems, especially some occasional visible problems, because we have no idea what's our user's acctual operations, thus it's hard for us to reproduce the scenes. At this moment, we think, it will be great help if we have a detailed and classified log agent, just like the backend do.
+```sh
+# Newest stable v1 subversion, selected by latest
+npm install logline
+pnpm add logline
 
-Application scenario
--------------------
+# Opt into the v2 beta
+npm install logline@beta
+pnpm add logline@beta
 
-- Reproduce user operations
-
-    In the production environment, user's operations are un-predicable, even they
-    cannot remember the details themselves, with log, we have the ability to
-    reproduce the operation paths and running state.
-
-- Monitoring core processes
-
-    In the core processes in our products, we can upload the logs positively,
-    as we can focus our user's problems and count the amount quickly.
-
-- Positively get user's logs and analysis user's activities
-
-    Don't believe on the users to coordinate you, we can design a strategy, such as
-    deploy an json file online, configure a list containing the target users we
-    wanted, when our product is opened on their client, they will download this
-    json file after a certain delay(to prevent affections on the core process's
-    performance), if the user id is in the list, we will upload the logs positively.
-
-- Count errors and help to analysis
-
-    We can make use of Logline to count js errors. With the error stack, we can speed
-    up the analysis.
-
-Features
--------
-
-- No extra dependencies
-- client-side(reach when acctually needed, save bandwith and traffic)
-- multiple filter dimension(namespace, degree and keyword)
-- multiple stores(IndexDB, Websql, localStorage)
-- cleanable(in case take too much user space)
-
-Quick to get started
--------------------
-
-### 1. Installation
-
-#### with Bower
-
-```shell
-bower install logline
+# Explicitly stay on the v1 major line
+npm install logline@1
+pnpm add logline@1
 ```
 
-#### Download archive
+The first beta is `2.0.0-beta.0`. The `beta` npm tag is separate from `latest`; default installs continue to use the newest published v1 minor/patch release. See [release status](https://www.npmjs.com/package/logline?activeTab=versions) for published versions. Development requires Node.js 24 and pnpm 10.20.0.
 
-access [https://github.com/tellok/logline/releases](https://github.com/tellok/logline/releases), selecte the version you wanted.
+## Logging
 
-### 2. Import to your project
+```ts
+import { configureLogline, DEBUG, ERROR, LOG, TRACE, WARN } from 'logline';
 
-Logline is an UMD ready module, choose to import it as your project needed.
-CMD is evil, which is not supported, wrapper it yourself if you need it indeed.
-
-```javascript
-// using <script> element
-<script src="./mod/logline.min.js"></script>;
-
-// using AMD loader
-var Logline = require('./mod/logline.min');
+configureLogline({ throttle: 500 });
+TRACE('Starting request');
+DEBUG('Elapsed: %d ms', 42);
+LOG('User: %o', { id: 'demo' });
+WARN('Missing configuration');
+ERROR('Request failed', new Error('Network unavailable'));
 ```
 
-### 3. Choose a log protocol
+Supported levels, from lowest to highest: `TRACE`, `DEBUG`, `LOG`, `WARN`, `ERROR`. Console placeholders include `%s`, `%d`, `%i`, `%f`, `%o`, `%O`, and `%j`.
 
-Logline implements three protocols, all of them are mounted on the `Logline` object for special uses, together with better semantics.
+`configureLogline` merges supplied fields into the global configuration. `filter(record)` rejects records before console output and plugin dispatch. `throttle` accepts milliseconds, `false`, or `{ ms, key }`; its default key uses the first string argument. `plugins` extends processing with custom `install` and `onLog` hooks. `getLoglineConfig()` reads configuration and `resetLoglineConfig()` resets it.
 
-- `websql:` Logline.PROTOCOL.WEBSQL
-- `indexeddb:` Logline.PROTOCOL.INDEXEDDB
-- `localstorage:` Logline.PROTOCOL.LOCALSTORAGE
-
-you can use `using` method to specialfy a protocol.
-
-```javascript
-Logline.using(Logline.PROTOCOL.WEBSQL);
-```
-
-_**If you call Logline related APIs, without specialfy a protocol in advance**_, Logline will choose a available protocol automatically, respect the priority according to the configuration parameters during the compile process.
-
-such as, your compile command is `npm run configure -- --with-indexeddb --with-websql --with-localstorage`,
-if protocol indexeddb is available, then indexeddb protocol with be chosen automatically,
-otherwise, if indexeddb protocol is not available and websql protocol is available, then websql protocol will be chosen, and so on.
-
-If none of the compiled protocols are available, an error will be thrown.
-
-#### 4. Record logs
-
-```javascript
-var spaLog = new Logline('spa'),
-    sdkLog = new Logline('sdk');
-
-// with description, without extra data
-spaLog.info('init.succeed');
-
-// with description and extra data
-spaLog.error('init.failed', {
-    retcode: 'EINIT',
-    retmsg: 'invalid signature',
-});
-
-// with description, without extra data
-sdkLog.warning('outdated');
-
-// with description and extra data
-sdkLog.critical('system.vanish', {
-    // debug infos here
+```ts
+configureLogline({
+  filter: ({ messageText }) => !messageText?.includes('secret'),
+  throttle: { ms: 500, key: ({ level, args }) => `${level}-${String(args[0])}` },
 });
 ```
 
-### 5. Read logs
+## Vite integration
 
-```javascript
-// collect all logs
-Logline.all(function (logs) {
-    // process logs here
-});
+```ts
+import { defineConfig } from 'vite';
+import { loglineVitePlugin } from 'logline/vite-plugin';
 
-// collet logs within .3 days
-Logline.get('.3d', function (logs) {
-    // process logs here
-});
-
-// collect logs from 3 days before, and earlier than 1 days ago
-Logline.get('3d', '1d', function (logs) {
-    // process logs here
+export default defineConfig({
+  plugins: [
+    loglineVitePlugin({
+      level: 'WARN',
+      indexedDB: true,
+      htmlInterop: { inline: true },
+    }),
+  ],
 });
 ```
 
-### 6. Clean logs
+| Option                               | Default                 | Behavior                                                   |
+| ------------------------------------ | ----------------------- | ---------------------------------------------------------- |
+| `level`                              | Environment, then `LOG` | Marks lower-level calls as pure for removal in production  |
+| `indexedDB`                          | `false`                 | Automatically installs persistence; accepts plugin options |
+| `logPrefixMacro`                     | `true`                  | Adds source location and dependency package attribution    |
+| `logPrefixMacro.includeFunctionName` | `true`                  | Adds the nearest named function                            |
+| `logPrefixMacro.sourcemapRetrack`    | `true`                  | Uses available sourcemaps for source locations             |
+| `logPrefixMacro.namespace`           | `undefined`             | Adds a label to application code                           |
+| `htmlInterop`                        | Disabled                | Captures startup console output and global errors          |
 
-```javascript
-Logline.keep(0.5); // keep logs within half a day, if `.5` is not provided, will clean up all logs
-Logline.clean(); // clean all logs and delete database
+The minimum build level is resolved from the explicit `level`, process `VITE_LOG_LEVEL`, Vite `.env*` files, then `LOG`. Prefixes are injected for string literals and template literals. npm dependencies receive their installed package name and published artifact location; application namespaces do not override dependency attribution.
+
+The Vite peer range is `^6.2.1 || ^7.0.0 || ^8.0.0`. Higher Vite versions also require a compatible Node.js version.
+
+## Auto-import
+
+```ts
+import AutoImport from 'unplugin-auto-import/vite';
+import { createLoglineAutoImport } from 'logline/auto-import';
+
+// Add to the Vite plugins array.
+AutoImport({ ...createLoglineAutoImport() });
 ```
 
-Custom database name
--------------------
+`unplugin-auto-import` is optional and must be installed separately. `loglineAutoImportResolvers` is also exported.
 
-Because indexeddb, websql and localstorage are all domain shared storage, the default database name `logline` may have already been taken, you can specialfy a custom database name in two ways as follows:
+## Persistence and startup capture
 
-```javascript
-// special a second parameter when calling `using` API
-Logline.using(Logline.PROTOCOL.WEBSQL, 'newlogline');
+```ts
+import { configureLogline, ERROR } from 'logline';
+import { createIndexedDBLoggingPlugin } from 'logline/plugin/indexeddb';
 
-// call `database` API
-Logline.database('newlogline');
+const storage = createIndexedDBLoggingPlugin({ databaseName: 'app-logs', maxEntries: 5000 });
+configureLogline({ plugins: [storage] });
+ERROR('Request failed', new Error('Timeout'));
+const errors = await storage.getLogs(50, { level: 'ERROR' });
+// Release listeners and the database connection when no longer needed.
+storage.dispose();
 ```
 
-Custom Compile
---------------
+Without an explicit name, databases use the resolved Vite base: `logline` at the root or `logline:<base>` for a deployment subpath. Use the plugin instance to query explicitly named databases. The standalone `getLogs()` uses automatic naming.
 
-Logline implements `localstorage`, `websql` and `indexeddb` protocols, all of them are compiled by default, if you don't need all of them, you can use `npm run configure` and `npm run build` to compile your custom build with partial protocols packed. This helps to reduces the package size.
+HTML Interop is opt-in. It buffers up to 1,000 startup records until IndexedDB takes over, restores console methods, and transfers the buffer. After takeover, persistence records Logline calls and global `error` / `unhandledrejection` events; ordinary console calls are no longer collected. Importing the main entry alone does not install HTML Interop.
 
-```shell
-// pack all protocols with no parameters
-npm run configure
-// pack only wanted protocols, remove corresponding --with-xx
-npm run configure -- --with-localstorage --with-websql
+- [IndexedDB reference](./docs/indexeddb.md)
+- [Click logging reference](./docs/click-log.md)
+- [Migration and release policy](./docs/migration-v2.md)
+- [中文完整参考](./README.zh-CN.md)
 
-// re-compile
-npm run build
-// find the custom build in dist fold
-ls -l dist/
+## Library authors
+
+Declare the experimental Logline version in both `peerDependencies` and `devDependencies`, for example `2.0.0-beta.0`. Keep `logline` external in library builds so the consuming application provides one instance. If you use the Vite plugin while building a library, explicitly set `logPrefixMacro: false` and keep `indexedDB: false`; the final application owns attribution and persistence.
+
+## Development and releases
+
+```sh
+pnpm install
+pnpm run verify
+pnpm changeset
 ```
 
-FAQ
----
+Add a Changeset for an observable change and its Chinese summary in `.changeset/translations.json`. The lightweight default-branch workflow prepares a version PR without building the product. PR checks validate the newest merged result. Only a verified version-PR merge may build and publish a beta through npm trusted publishing in `release.yml`. The workflow builds once, validates the package, and publishes that same tarball with `--tag beta`.
 
-### How to upload logs
+See the bilingual [release-flow contract](./docs/release-flow.md) for permissions, source verification, storage, recovery, and external-contributor execution boundaries.
 
-since v1.0.1, log upload ability is removed, as the upload procedures varies upon different projects,
-and we do hope Logline to focus on log recording and maintenance.
-Anyway, you can still use `Logline.all` and `Logline.get` to get the logs,
-and implement your own upload procedure.
+## License
 
-[travis-image]: https://api.travis-ci.org/latel/logline.svg
-[travis-url]: https://travis-ci.org/latel/logline
+[MIT](./LICENSE).

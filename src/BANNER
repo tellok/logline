@@ -1,3 +1,0 @@
-<%=pkg.name%> v<%=pkg.version%> (<%=pkg.homepage%>)
-Copyright <%=new Date().getFullYear()%>, <%=pkg.author%>
-<%=pkg.license%> license

@@ -1,0 +1,8 @@
+{
+  "mode": "pre",
+  "tag": "beta",
+  "initialVersions": {
+    "logline": "1.1.5"
+  },
+  "changesets": []
+}

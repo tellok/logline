@@ -1,65 +1,124 @@
 {
   "name": "logline",
   "version": "1.1.5",
-  "description": "logging the frontend",
-  "main": "dist/logline.min.js",
-  "scripts": {
-    "test": "mocha-headless-chrome -f test/index.html -a no-sandbox",
-    "configure": "gulp configure",
-    "dev": "rollup -c build/rollup.dev.js -w",
-    "build:dev": "rollup -c build/rollup.build.js",
-    "build:prod": "cross-env NODE_ENV=production rollup -c build/rollup.build.js",
-    "build": "npm run build:dev && npm run build:prod && npm run test"
+  "description": "Structured frontend logging with Vite integration, IndexedDB persistence, and startup error capture.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./auto-import": {
+      "types": "./dist/auto-import.d.ts",
+      "import": "./dist/auto-import.js",
+      "require": "./dist/auto-import.cjs"
+    },
+    "./plugin/*": {
+      "types": "./dist/plugins/*/index.d.ts",
+      "import": "./dist/plugins/*/index.js",
+      "require": "./dist/plugins/*/index.cjs"
+    },
+    "./html-interop": {
+      "types": "./dist/html-interop.d.ts",
+      "import": "./dist/html-interop.js",
+      "require": "./dist/html-interop.cjs"
+    },
+    "./vite-plugin": {
+      "types": "./dist/vite-plugin.d.ts",
+      "import": "./dist/vite-plugin.js",
+      "require": "./dist/vite-plugin.cjs"
+    },
+    "./docs/*": "./docs/*"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/latel/logline.git"
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "docs",
+    "skills",
+    "README.zh-CN.md"
+  ],
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "pnpm run type-check && vite build",
+    "test": "vitest run src",
+    "lint": "eslint src scripts vite.config.ts eslint.config.ts --max-warnings 0",
+    "lint:fix": "eslint . --fix",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit",
+    "format:check": "prettier src docs skills scripts .github .changeset .release '*.json' '*.ts' '*.md' --check",
+    "prepack": "pnpm run build",
+    "prepublishOnly": "node scripts/check-prerelease.mjs && pnpm run type-check && pnpm run lint && pnpm run test",
+    "changeset": "changeset",
+    "version:prepare": "node scripts/prepare-version.mjs",
+    "release:beta": "node scripts/publish-release.mjs",
+    "verify": "node scripts/verify.mjs",
+    "test:release": "node --test --test-reporter=tap scripts/*.test.mjs"
   },
   "keywords": [
-    "log",
+    "logging",
     "frontend",
-    "js",
-    "html",
-    "websql",
-    "localstroage"
+    "typescript",
+    "vite",
+    "indexeddb",
+    "error-monitoring"
   ],
   "author": "latel <latelx64@icloud.com>",
   "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/latel/logline/issues"
-  },
-  "homepage": "https://github.com/latel/logline#readme",
-  "devDependencies": {
-    "babel-core": "^6.7.7",
-    "babel-plugin-external-helpers": "^6.22.0",
-    "babel-plugin-transform-object-assign": "^6.22.0",
-    "babel-preset-env": "^1.7.0",
-    "chai": "^3.5.0",
-    "colors": "^1.1.2",
-    "cross-env": "^5.1.3",
-    "fs-extra": "^1.0.0",
-    "gulp": "^3.9.1",
-    "gulp-babel": "^6.1.2",
-    "gulp-compile-handlebars": "^0.6.1",
-    "gulp-rename": "^1.2.2",
-    "html-loader": "^0.4.3",
-    "install": "^0.12.1",
-    "jsonfile": "^2.4.0",
-    "minimist": "^1.2.0",
-    "mocha": "^2.5.3",
-    "mocha-headless-chrome": "1.7.1",
-    "moment": "^2.13.0",
-    "npm": "^6.4.1",
-    "rollup": "^0.41.4",
-    "rollup-plugin-babel": "^2.7.1",
-    "rollup-plugin-license": "^0.2.0",
-    "rollup-plugin-livereload": "^0.6.0",
-    "rollup-plugin-serve": "^0.4.2",
-    "rollup-plugin-uglify": "^1.0.1",
-    "rollup-watch": "^4.3.1"
-  },
   "dependencies": {
-    "lodash": "^4.17.10",
-    "lodash-es": "^4.17.10"
+    "@babel/parser": "^7.26.3",
+    "@babel/traverse": "^7.26.3",
+    "@babel/types": "^7.26.3",
+    "esbuild": "^0.25.11",
+    "magic-string": "^0.30.12",
+    "source-map-js": "^1.2.1"
+  },
+  "devDependencies": {
+    "@changesets/cli": "2.29.7",
+    "@microsoft/api-extractor": "^7.55.0",
+    "@types/babel__traverse": "^7.20.6",
+    "@types/node": "^24.10.1",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "fake-indexeddb": "^6.2.5",
+    "globals": "^16.5.0",
+    "jiti": "^2.6.1",
+    "prettier": "^3.1.1",
+    "semver": "7.7.3",
+    "typescript": "5.8.2",
+    "typescript-eslint": "^8.46.4",
+    "unplugin-dts": "1.0.0-beta.6",
+    "vite": "^6.2.1",
+    "vite-plugin-externalize-deps": "^0.10.0",
+    "vitest": "^4.0.13"
+  },
+  "peerDependencies": {
+    "vite": "^6.2.1 || ^7.0.0 || ^8.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "beta",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tellok/logline.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tellok/logline/issues"
+  },
+  "homepage": "https://github.com/tellok/logline#readme",
+  "packageManager": "pnpm@10.20.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }

@@ -1,26 +1,9 @@
-# EditorConfig 超级棒: http://EditorConfig.org
-# 最顶层的配置，不会再继续往上查找配置
 root = true
 
-# 匹配所有文件
 [*]
-# 使用Unix风格的换行控制
-end_of_line = lf
-# 在每个文件结尾添加Unix风格的空行
-insert_final_newline = true
-# 去除行尾多余的空格
-trim_trailing_whitespace = true
-# 设定文件的编码为UTF-8
 charset = utf-8
-# 缩进风格为空格
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
 indent_style = space
-# 缩进4个空格
-indent_size = 4
-
-# 匹配JSON文件
-[*.json]
-# 缩进2个空格
 indent_size = 2
-
-[makefile]
-indent_style = tab
