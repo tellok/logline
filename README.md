@@ -1,10 +1,11 @@
-# Logline v2
+# Logline
 
 English | [简体中文](./README.zh-CN.md)
 
 Structured frontend logging with TypeScript, Vite integration, IndexedDB persistence, and startup error capture.
 
-**This default branch contains the v2 beta.** For v1 installation and usage, see the [v1 README](https://github.com/tellok/logline/blob/v1/README.md). The preserved [v1 branch](https://github.com/tellok/logline/tree/v1) contains the previous default-branch implementation. v2 is a rewrite and does not implement the v1 constructor or storage protocol API.
+> [!IMPORTANT]
+> **This default branch contains the v2 beta.** For v1 installation and usage, see the [v1 README](https://github.com/tellok/logline/blob/v1/README.md). The preserved [v1 branch](https://github.com/tellok/logline/tree/v1) contains the previous default-branch implementation. v2 is a rewrite and does not implement the v1 constructor or storage protocol API.
 
 ## Installation
 

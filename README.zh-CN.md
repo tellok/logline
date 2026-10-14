@@ -1,10 +1,11 @@
-# Logline v2
+# Logline
 
 [English](./README.md) | 简体中文
 
 ## v2 beta 与 v1 安装
 
-**当前默认分支为 v2 beta。** 安装和使用 v1 请查看 [v1 README](https://github.com/tellok/logline/blob/v1/README.zh-CN.md)；[v1 分支](https://github.com/tellok/logline/tree/v1) 保留此前默认分支的实现。v2 重写了 API，不兼容 v1 的构造函数和存储协议。
+> [!IMPORTANT]
+> **当前默认分支为 v2 beta。** 安装和使用 v1 请查看 [v1 README](https://github.com/tellok/logline/blob/v1/README.zh-CN.md)；[v1 分支](https://github.com/tellok/logline/tree/v1) 保留此前默认分支的实现。v2 重写了 API，不兼容 v1 的构造函数和存储协议。
 
 ```sh
 # 默认安装最新的稳定 v1 子版本
