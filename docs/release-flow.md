@@ -60,3 +60,13 @@ Release delivery is serialized without cancellation. Manual recovery accepts the
 Local tests cover beta-only versions, newest-v1 selection, precise changelog extraction, and candidate/consumed-file detection. Real rollout checks exercise a feature PR, automatic lightweight version PR preparation, merged-result verification, source replay, OIDC npm publication, GitHub delivery, and default-install preservation. Record actual run links and outcomes when completed; these documents do not claim unexecuted external-fork approval or cancellation scenarios have passed.
 
 The design follows the [version-PR release Skill](https://github.com/tellok/dotai/tree/main/skills/design-pr-versionization), [Changesets prerelease guidance](https://changesets.dev/guide/prereleases), and [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/).
+
+## Online documentation
+
+The bilingual VitePress site is hosted at https://tellok.github.io/logline/ (English) and https://tellok.github.io/logline/zh/ (Simplified Chinese). The Pages source is GitHub Actions. PR checks build both languages and reject broken internal links.
+
+After verified npm and GitHub release delivery succeeds, the documentation job checks out the same verified release SHA, builds the site once, and deploys through the github-pages environment. Ordinary pushes and version preparation do not deploy. The site embeds the actual package version and source SHA in release.json. Repeating the original release restores documentation from that original source; it never substitutes the latest branch.
+
+A single Pages artifact is required by the deploy-pages consumer. The job deletes that exact artifact after the deployment attempt; a one-day expiry limits retention if runner loss prevents cleanup. Deleting this transfer artifact does not remove the deployed site. Documentation build or deployment failure fails the release workflow; a successful npm upload remains published and is verified on recovery.
+
+For local work, use pnpm docs:dev, pnpm docs:build, and pnpm docs:preview. README and Markdown guides remain the source of truth; generated staging and output are ignored and excluded from npm packaging.

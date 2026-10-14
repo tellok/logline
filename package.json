@@ -50,14 +50,17 @@
     "lint:fix": "eslint . --fix",
     "clean": "rm -rf dist",
     "type-check": "tsc --noEmit",
-    "format:check": "prettier src docs skills scripts .github .changeset .release '*.json' '*.ts' '*.md' --check",
+    "format:check": "prettier src docs skills scripts .vitepress .github .changeset .release '*.json' '*.ts' '*.md' --check",
     "prepack": "pnpm run build",
     "prepublishOnly": "node scripts/check-prerelease.mjs && pnpm run type-check && pnpm run lint && pnpm run test",
     "changeset": "changeset",
     "version:prepare": "node scripts/prepare-version.mjs",
     "release:beta": "node scripts/publish-release.mjs",
     "verify": "node scripts/verify.mjs",
-    "test:release": "node --test --test-reporter=tap scripts/*.test.mjs"
+    "test:release": "node --test --test-reporter=tap scripts/*.test.mjs",
+    "docs:dev": "node scripts/prepare-docs.mjs && vitepress dev",
+    "docs:build": "node scripts/prepare-docs.mjs && vitepress build && node scripts/check-docs.mjs",
+    "docs:preview": "vitepress preview"
   },
   "keywords": [
     "logging",
@@ -94,6 +97,7 @@
     "unplugin-dts": "1.0.0-beta.6",
     "vite": "^6.2.1",
     "vite-plugin-externalize-deps": "^0.10.0",
+    "vitepress": "1.6.4",
     "vitest": "^4.0.13"
   },
   "peerDependencies": {

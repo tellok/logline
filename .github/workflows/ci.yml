@@ -22,31 +22,32 @@ concurrency:
 jobs:
   verify:
     runs-on:
-    - self-hosted
-    - tower
-    - ubuntu-latest
-    - tower-run-${{ github.run_id }}-${{ github.run_attempt }}
+      - self-hosted
+      - tower
+      - ubuntu-latest
+      - tower-run-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
-    - uses: actions/checkout@v6
-      with:
-        fetch-depth: 0
-        persist-credentials: false
-    - uses: pnpm/action-setup@v6
-    - uses: actions/setup-node@v6
-      with:
-        node-version: 24
-        cache: pnpm
-    - run: node scripts/check-pr-context.mjs
-      env:
-        GH_TOKEN: ${{ github.token }}
-        PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
-        EXPECTED_HEAD: ${{ inputs.source_sha }}
-        EXPECTED_BASE: ${{ inputs.target_sha }}
-    - run: pnpm install --frozen-lockfile
-    - run: pnpm run verify
-    - run: node scripts/check-pr-context.mjs
-      env:
-        GH_TOKEN: ${{ github.token }}
-        PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
-        EXPECTED_HEAD: ${{ inputs.source_sha }}
-        EXPECTED_BASE: ${{ inputs.target_sha }}
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: node scripts/check-pr-context.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+          EXPECTED_HEAD: ${{ inputs.source_sha }}
+          EXPECTED_BASE: ${{ inputs.target_sha }}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run verify
+      - run: pnpm run docs:build
+      - run: node scripts/check-pr-context.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+          EXPECTED_HEAD: ${{ inputs.source_sha }}
+          EXPECTED_BASE: ${{ inputs.target_sha }}

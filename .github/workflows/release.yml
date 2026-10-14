@@ -17,57 +17,99 @@ concurrency:
 jobs:
   eligibility:
     runs-on:
-    - self-hosted
-    - tower
-    - ubuntu-latest
-    - tower-run-${{ github.run_id }}-${{ github.run_attempt }}
+      - self-hosted
+      - tower
+      - ubuntu-latest
+      - tower-run-${{ github.run_id }}-${{ github.run_attempt }}
     outputs:
       eligible: ${{ steps.proof.outputs.eligible }}
       source_sha: ${{ steps.proof.outputs.source_sha }}
     steps:
-    - uses: actions/checkout@v6
-      with:
-        ref: ${{ inputs.source_sha || github.sha }}
-        fetch-depth: 0
-        persist-credentials: false
-    - uses: pnpm/action-setup@v6
-    - uses: actions/setup-node@v6
-      with:
-        node-version: 24
-        cache: pnpm
-    - run: pnpm install --frozen-lockfile
-    - id: proof
-      run: node scripts/verify-release.mjs
-      env:
-        GH_TOKEN: ${{ github.token }}
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.source_sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - id: proof
+        run: node scripts/verify-release.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
   publish:
     needs: eligibility
     if: needs.eligibility.outputs.eligible == 'true'
     runs-on:
-    - self-hosted
-    - tower
-    - ubuntu-latest
-    - tower-run-${{ github.run_id }}-${{ github.run_attempt }}
+      - self-hosted
+      - tower
+      - ubuntu-latest
+      - tower-run-${{ github.run_id }}-${{ github.run_attempt }}
     permissions:
       contents: write
       pull-requests: read
       id-token: write
     steps:
-    - uses: actions/checkout@v6
-      with:
-        ref: ${{ needs.eligibility.outputs.source_sha }}
-        fetch-depth: 0
-        persist-credentials: false
-    - uses: pnpm/action-setup@v6
-    - uses: actions/setup-node@v6
-      with:
-        node-version: 24
-        registry-url: https://registry.npmjs.org
-        package-manager-cache: false
-    - run: npm install --global npm@11.15.0
-    - run: pnpm install --frozen-lockfile
-    - run: pnpm run verify
-    - run: pnpm run release:beta
-      env:
-        GH_TOKEN: ${{ github.token }}
-        RELEASE_VERIFIED_SHA: ${{ needs.eligibility.outputs.source_sha }}
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.eligibility.outputs.source_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - run: npm install --global npm@11.15.0
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run verify
+      - run: pnpm run release:beta
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERIFIED_SHA: ${{ needs.eligibility.outputs.source_sha }}
+  documentation:
+    needs: [eligibility, publish]
+    if: needs.eligibility.outputs.eligible == 'true'
+    runs-on:
+      - self-hosted
+      - tower
+      - ubuntu-latest
+      - tower-run-${{ github.run_id }}-${{ github.run_attempt }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+      actions: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.eligibility.outputs.source_sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: actions/configure-pages@v6
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run docs:build
+      - uses: actions/upload-pages-artifact@v5
+        id: pages-artifact
+        with:
+          path: .vitepress/dist
+          retention-days: 1
+      - uses: actions/deploy-pages@v5
+        id: deployment
+      - name: Remove the consumed Pages transfer artifact
+        if: always() && steps.pages-artifact.outputs.artifact_id != ''
+        run: node scripts/cleanup-pages-artifact.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PAGES_ARTIFACT_ID: ${{ steps.pages-artifact.outputs.artifact_id }}

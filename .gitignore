@@ -3,3 +3,8 @@ dist/
 coverage/
 *.tgz
 .DS_Store
+
+# Generated documentation staging and VitePress output
+.docs-site/
+.vitepress/cache/
+.vitepress/dist/

@@ -1,6 +1,6 @@
 # Logline
 
-English | [简体中文](./README.zh-CN.md)
+English | [简体中文](./README.zh-CN.md) | [Online documentation](https://tellok.github.io/logline/)
 
 Structured frontend logging with TypeScript, Vite integration, IndexedDB persistence, and startup error capture.
 

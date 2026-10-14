@@ -13,26 +13,26 @@ concurrency:
 jobs:
   prepare:
     runs-on:
-    - self-hosted
-    - tower
-    - ubuntu-latest
-    - tower-run-${{ github.run_id }}-${{ github.run_attempt }}
+      - self-hosted
+      - tower
+      - ubuntu-latest
+      - tower-run-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
-    - uses: actions/checkout@v6
-      with:
-        fetch-depth: 0
-    - id: pending
-      run: node scripts/release-contract.mjs
-    - if: steps.pending.outputs.pending == 'true'
-      uses: pnpm/action-setup@v6
-    - if: steps.pending.outputs.pending == 'true'
-      uses: actions/setup-node@v6
-      with:
-        node-version: 24
-        cache: pnpm
-    - if: steps.pending.outputs.pending == 'true'
-      run: pnpm install --frozen-lockfile
-    - if: steps.pending.outputs.pending == 'true'
-      run: pnpm run version:prepare
-      env:
-        GH_TOKEN: ${{ github.token }}
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - id: pending
+        run: node scripts/release-contract.mjs
+      - if: steps.pending.outputs.pending == 'true'
+        uses: pnpm/action-setup@v6
+      - if: steps.pending.outputs.pending == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - if: steps.pending.outputs.pending == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: steps.pending.outputs.pending == 'true'
+        run: pnpm run version:prepare
+        env:
+          GH_TOKEN: ${{ github.token }}

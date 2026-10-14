@@ -53,3 +53,13 @@ npm 信任关系为 tellok/logline 的 release.yml，不限制 environment，允
 本地契约测试覆盖 beta 限制、最新 v1 选择、精确章节及变更集检测。真实上线将验证功能 PR、自动版本 PR、最新合并结果、来源重放、OIDC 发布与默认安装保护，并记录实际结果。不将尚未执行的 fork 审批及取消故障场景表述为已通过。
 
 依据：[版本 PR 发布 Skill](https://github.com/tellok/dotai/tree/main/skills/design-pr-versionization)、[Changesets 预发布](https://changesets.dev/guide/prereleases)、[npm 可信发布](https://docs.npmjs.com/trusted-publishers/)。
+
+## 在线文档
+
+双语 VitePress 站点部署在 https://tellok.github.io/logline/（英文）和 https://tellok.github.io/logline/zh/（简体中文），Pages 来源设置为 GitHub Actions。PR 检查构建两种语言并拒绝失效的内部链接。
+
+经核验的 npm 与 GitHub Release 交付成功后，文档作业检出相同的发布 SHA，构建一次并通过 github-pages 环境部署。普通提交和版本准备不部署文档。站点的 release.json 记录实际包版本与源码 SHA。重跑原发布会使用原始源码恢复文档，不使用最新分支代替。
+
+Pages 部署需要一个供 deploy-pages 消费的临时制品。部署尝试结束后，作业删除该精确制品；执行器丢失导致无法清理时，一天过期限制保留时间。删除临时制品不会移除已部署的站点。文档构建或部署失败使发布流水线失败；已成功上传的 npm 版本仍保留，恢复时核验其内容。
+
+本地使用 pnpm docs:dev、pnpm docs:build 和 pnpm docs:preview。README 和 Markdown 指南是唯一内容来源；生成的暂存目录和站点产物均被忽略且不进入 npm 包。

@@ -5,6 +5,8 @@ description: Add, configure, or debug structured frontend logging with experimen
 
 # Logline v2 integration
 
+Read the [online documentation](https://tellok.github.io/logline/) or its [Simplified Chinese version](https://tellok.github.io/logline/zh/) for the released integration guides.
+
 ## Confirm the version
 
 This Skill applies to experimental v2 only. Inspect package.json and confirm a 2.x prerelease is installed. Unqualified npm/pnpm installation still selects stable v1, whose constructor and storage protocol API differ from v2.
