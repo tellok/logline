@@ -2,26 +2,17 @@
 
 [English](./README.md) | 简体中文
 
-## v2 beta 与 v1 安装
-
 > [!IMPORTANT]
 > **当前默认分支为 v2 beta。** 安装和使用 v1 请查看 [v1 README](https://github.com/tellok/logline/blob/v1/README.zh-CN.md)；[v1 分支](https://github.com/tellok/logline/tree/v1) 保留此前默认分支的实现。v2 重写了 API，不兼容 v1 的构造函数和存储协议。
 
-```sh
-# 默认安装最新的稳定 v1 子版本
-npm install logline
-pnpm add logline
+## 安装
 
-# 显式安装 v2 beta
+```sh
 npm install logline@beta
 pnpm add logline@beta
-
-# 显式限定 v1 主版本
-npm install logline@1
-pnpm add logline@1
 ```
 
-首个 beta 版本为 `2.0.0-beta.0`。beta 标签与 latest 独立，普通安装继续使用已发布 v1 中最新的次版本和补丁版本。开发要求 Node.js 24 和 pnpm 10.20.0。
+已发布版本请查看[发布状态](https://www.npmjs.com/package/logline?activeTab=versions)。开发要求 Node.js 24 和 pnpm 10.20.0。
 
 ## 迁移与单实例
 

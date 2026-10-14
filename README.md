@@ -10,20 +10,11 @@ Structured frontend logging with TypeScript, Vite integration, IndexedDB persist
 ## Installation
 
 ```sh
-# Newest stable v1 subversion, selected by latest
-npm install logline
-pnpm add logline
-
-# Opt into the v2 beta
 npm install logline@beta
 pnpm add logline@beta
-
-# Explicitly stay on the v1 major line
-npm install logline@1
-pnpm add logline@1
 ```
 
-The first beta is `2.0.0-beta.0`. The `beta` npm tag is separate from `latest`; default installs continue to use the newest published v1 minor/patch release. See [release status](https://www.npmjs.com/package/logline?activeTab=versions) for published versions. Development requires Node.js 24 and pnpm 10.20.0.
+See [release status](https://www.npmjs.com/package/logline?activeTab=versions) for published versions. Development requires Node.js 24 and pnpm 10.20.0.
 
 ## Logging
 
