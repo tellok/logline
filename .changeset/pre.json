@@ -4,5 +4,5 @@
   "initialVersions": {
     "logline": "1.1.5"
   },
-  "changesets": ["first-v2-beta"]
+  "changesets": ["documentation-pages", "first-v2-beta"]
 }

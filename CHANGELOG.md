@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0-beta.1
+
+### Patch Changes
+
+- c90a147: Add bilingual online documentation deployed to GitHub Pages after verified beta releases.
+
 ## 2.0.0-beta.0
 
 ### Major Changes
