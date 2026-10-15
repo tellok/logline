@@ -1,17 +1,17 @@
 {
   "schema": 1,
-  "baseSha": "d670618b07dcb5e646e6c0c4a7b754f74cc00901",
+  "baseSha": "d02feff3b6bd85668dc8973f003e8afa01ad8922",
   "channel": "beta",
   "cli": "2.29.7",
   "package": "logline",
-  "previousVersion": "1.1.5",
-  "version": "2.0.0-beta.0",
+  "previousVersion": "2.0.0-beta.0",
+  "version": "2.0.0-beta.1",
   "changesets": [
     {
-      "id": "first-v2-beta",
-      "sha256": "128cf829843915e969986cbeaf8f0c58c6d91f8d65d14b01a1b3c3e454f7ebf4",
-      "summary": "Introduce the TypeScript v2 beta with structured logging, Vite integration, IndexedDB persistence, startup capture, and auto-import helpers.",
-      "translation": "推出 TypeScript v2 beta，提供结构化日志、Vite 集成、IndexedDB 持久化、启动阶段捕获与自动导入。"
+      "id": "documentation-pages",
+      "sha256": "4e191573f534e6dd4bd389d575aa051b43fc6d3c2945e1c0dd03b5e7df92af40",
+      "summary": "Add bilingual online documentation deployed to GitHub Pages after verified beta releases.",
+      "translation": "新增双语在线文档，在经核验的 beta 版本发布后部署到 GitHub Pages。"
     }
   ]
 }
