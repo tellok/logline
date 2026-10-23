@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { api, assertBeta, command, newestV1, project, readJson, releaseChapter, root } from './release-contract.mjs';
 
-const pkg = readJson('package.json');
+const pkg = readJson('packages/logline/package.json');
 assertBeta(pkg);
 const sourceSha = command('git', ['rev-parse', 'HEAD']).trim();
 assert.equal(process.env.RELEASE_VERIFIED_SHA, sourceSha, 'Release source was not verified');
@@ -23,7 +23,9 @@ const assertLatest = () => {
   return tags;
 };
 assertLatest();
-const packed = JSON.parse(command('npm', ['pack', '--ignore-scripts', '--json', '--pack-destination', folder]));
+const packed = JSON.parse(
+  command('npm', ['pack', '--ignore-scripts', '--json', '--pack-destination', folder], join(root, 'packages/logline')),
+);
 assert.equal(packed.length, 1);
 const tarball = join(folder, packed[0].filename);
 const bytes = readFileSync(tarball);
@@ -66,7 +68,7 @@ writeFileSync(manifestFile, `${JSON.stringify(manifest, undefined, 2)}\n`);
 const notesFile = join(folder, 'release-notes.md');
 writeFileSync(
   notesFile,
-  `${releaseChapter(readFileSync(join(root, 'CHANGELOG.md'), 'utf8'), pkg.version)}\n\n### Simplified Chinese\n\n${releaseChapter(readFileSync(join(root, 'CHANGELOG.zh-CN.md'), 'utf8'), pkg.version)}\n`,
+  `${releaseChapter(readFileSync(join(root, 'packages/logline/CHANGELOG.md'), 'utf8'), pkg.version)}\n\n### Simplified Chinese\n\n${releaseChapter(readFileSync(join(root, 'packages/logline/CHANGELOG.zh-CN.md'), 'utf8'), pkg.version)}\n`,
 );
 const tag = `v${pkg.version}`;
 const refs = api(`repos/${repository}/git/matching-refs/tags/${tag}`);

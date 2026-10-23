@@ -41,8 +41,8 @@ const plan = readJson('.release/version-plan.json');
 assert.equal(plan.baseSha, parents[0], 'Version plan is stale relative to its actual merge base');
 assert.equal(plan.channel, 'beta');
 assert.equal(plan.cli, '2.29.7');
-assertBeta(readJson('package.json'));
-assert.equal(readJson('package.json').version, plan.version);
+assertBeta(readJson('packages/logline/package.json'));
+assert.equal(readJson('packages/logline/package.json').version, plan.version);
 const changed = command('git', ['diff', '--name-only', plan.baseSha, pr.head.sha]).trim().split('\n');
 assert.ok(
   changed.every((path) => VERSION_FILES.includes(path)),

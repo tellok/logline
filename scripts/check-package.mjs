@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 
-const require = createRequire(import.meta.url);
-const root = new URL('../', import.meta.url);
+const require = createRequire(new URL('../packages/logline/package.json', import.meta.url));
+const root = new URL('../packages/logline/', import.meta.url);
 const pkg = JSON.parse(readFileSync(new URL('package.json', root), 'utf8'));
 
 /** Check all public build entries so package exports never point to missing files. */
@@ -22,11 +22,11 @@ for (const path of [
     assert.ok(existsSync(new URL(file.replace('*', plugin), root)), file);
   }
   const id = path === '.' ? 'logline' : `logline/${path.slice(2)}`;
-  await import(id);
+  await import(new URL(entry.import.replace('*', plugin), root).href);
   require(id);
 }
 
-const runtime = await import('logline');
+const runtime = await import(new URL('dist/index.js', root).href);
 assert.equal(runtime.LOGLINE_MODULE_ID, 'logline');
 assert.equal(typeof runtime.configureLogline, 'function');
 assert.equal(runtime.createLoglineAutoImport().resolvers[0]('LOG').from, 'logline');

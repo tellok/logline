@@ -20,6 +20,10 @@ Prerelease Changesets remain in the directory while their IDs are tracked in pre
 
 Source updates use native pull_request events and GitHub's test merge commit. Target pushes enumerate all affected open PRs, including non-default targets. Same-repository collaborators and authorized automation use immutable synthetic refs to the current native merge commit, so CI configuration, scripts, installation, tests, and build all come from the same merged tree. Neither source nor target refs are changed. Head/base/merge parents are checked before and after verification; stale results fail. Per-PR concurrency and API cancellation stop older checks.
 
+Each workflow checks out its own event revision and reads that checkout's `.node-version` through the standard `setup-node` `node-version-file` input. The refresh controller uses its pushed or manually selected revision for both scripts and configuration; it does not substitute default-branch code. The completion handler uses the `workflow_run` event's revision, which GitHub defines on the default branch.
+
+Native `pull_request` events directly run CI for source updates; they do not trigger the refresh controller. Automatic refresh runs only on branch pushes and selects open PRs whose **target** is the pushed branch. A source-only branch push schedules no additional PR CI, unless that branch is itself the target of another open PR. Manual refresh can explicitly select a PR.
+
 External fork PRs use GitHub's native execution approval policy. The target-refresh controller does not dispatch fork code with privileged repository context: it records an action-required merged-result check instead. A maintainer must approve and run a fresh native merged-result validation before merging. Automatic target-only refresh for external forks is deliberately not claimed as verified; it requires the native approval boundary and a current merge identity. Do not bypass this with privileged workflow dispatch. Merge conflicts or stale native merge refs fail instead of silently checking only source code.
 
 Synthetic check refs are removed only after all their CI consumers complete, including failure or cancellation. The trusted completion handler checks repository, exact ref pattern, SHA, current ref identity, and active consumers. It never checks out upstream code. If cleanup fails, its workflow fails visibly; retry that same cleanup run or remove only the verified stale ref. There are no temporary CI file artifacts to clean.
@@ -36,14 +40,14 @@ Release notes come from exactly one chapter for the actual version in each chang
 
 ## Storage and permissions
 
-| Stage                       | Access                                                      | Product files                                          |
-| --------------------------- | ----------------------------------------------------------- | ------------------------------------------------------ |
-| Native/merged-result checks | Read repository and PR metadata                             | Job-local build and report; no upload                  |
-| Version preparation         | Contents/PR/actions write                                   | Version source files only; no product build            |
-| Target refresh              | Contents/actions/checks write; trusted default control code | Synthetic refs only; no source execution in controller |
-| Release eligibility         | Contents/PR read                                            | Isolated version replay; no product build              |
-| Verified beta delivery      | Contents write, PR read, id-token write                     | Local validated tarball; durable npm/GitHub delivery   |
-| Ref cleanup                 | Contents write, actions read; trusted default code          | Exact completed synthetic refs only                    |
+| Stage                       | Access                                                     | Product files                                        |
+| --------------------------- | ---------------------------------------------------------- | ---------------------------------------------------- |
+| Native/merged-result checks | Read repository and PR metadata                            | Job-local build and report; no upload                |
+| Version preparation         | Contents/PR/actions write                                  | Version source files only; no product build          |
+| Target refresh              | Contents/actions/checks write; event-revision control code | Synthetic refs only; no PR build in controller       |
+| Release eligibility         | Contents/PR read                                           | Isolated version replay; no product build            |
+| Verified beta delivery      | Contents write, PR read, id-token write                    | Local validated tarball; durable npm/GitHub delivery |
+| Ref cleanup                 | Contents write, actions read; workflow event revision      | Exact completed synthetic refs only                  |
 
 npm trusted publishing is configured for tellok/logline, release.yml, no environment, and direct npm publish. The runner uses Node.js 24 and npm 11.15.0. No persistent npm publishing token is stored. The repository URL must match GitHub exactly. No Docker images, documentation hosting, temporary CI transfer artifacts, or test-report uploads are part of this flow.
 
@@ -72,3 +76,5 @@ After verified npm and GitHub release delivery succeeds, the documentation job c
 A single Pages artifact is required by the deploy-pages consumer. The job deletes that exact artifact after the deployment attempt; a one-day expiry limits retention if runner loss prevents cleanup. Deleting this transfer artifact does not remove the deployed site. Documentation build or deployment failure fails the release workflow; a successful npm upload remains published and is verified on recovery.
 
 For local work, use pnpm docs:dev, pnpm docs:build, and pnpm docs:preview. README and Markdown guides remain the source of truth; generated staging and output are ignored and excluded from npm packaging.
+
+The private workspace root owns tooling; the publishable manifest and bilingual changelogs live in `packages/logline`. Version preparation targets that package without building it. Package verification stages public documentation from root sources before delivery. See the [workspace guide](./workspace.md).

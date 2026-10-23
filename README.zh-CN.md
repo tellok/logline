@@ -281,6 +281,10 @@ export default defineConfig({
 
 内联构建产物会避开 HTML 解析器禁止的原始控制字符，可由 Vite 开发服务器和生产构建页面直接解析。
 
+## Workspace 开发
+
+仓库采用 pnpm workspace 与 Nx，库位于 `packages/logline`，`apps/*` 为未来应用保留。固定 Node.js 24.22.1 LTS 与 pnpm 11.25.0，支持自动切换，禁用严格版本校验。命令、缓存和打包说明见 [Workspace 开发指南](./docs/workspace.zh-CN.md)。
+
 ## 发布流程
 
 用户可观察的更新需添加 Changeset 与中文摘要。默认分支先轻量生成版本 PR，通过最新合并结果验证后，只有合法版本 PR 的合并提交才能构建并以 beta 标签发布。详见[发布流程](./docs/release-flow.zh-CN.md)。

@@ -9,6 +9,8 @@ const target = process.env.TARGET_BRANCH;
 const requests = selected
   ? [api(`repos/${repository}/pulls/${selected}`)]
   : api(`repos/${repository}/pulls?state=open&base=${encodeURIComponent(target)}&per_page=100`, { paginate: true });
+if (!requests.length)
+  process.stdout.write('No open PRs target this branch; source updates are handled by native PR CI.\n');
 const failures = [];
 for (let pr of requests) {
   try {
