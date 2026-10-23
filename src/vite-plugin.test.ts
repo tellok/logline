@@ -6,10 +6,21 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SourceMapConsumer, type RawSourceMap } from 'source-map-js';
 import { build as viteBuild, type Plugin } from 'vite';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HTML_INTEROP_DETACH_KEY } from './html-interop/html-interop-shared';
 import { LOGLINE_VITE_BASE_MARKER } from './core/constants';
 import { loglineVitePlugin } from './vite-plugin';
+
+const mockedVite = vi.hoisted((): { version: string | undefined } => ({ version: undefined }));
+vi.mock(import('vite'), async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    get version() {
+      return mockedVite.version ?? actual.version;
+    },
+  };
+});
 
 const temporaryDirectories: string[] = [];
 const indexedDBPluginEntry = join(dirname(fileURLToPath(import.meta.url)), 'plugins/indexeddb/index.ts');
@@ -102,9 +113,114 @@ const transform = async (root: string, id: string, code: string): Promise<string
 };
 
 afterEach(() => {
+  mockedVite.version = undefined;
   for (const directory of temporaryDirectories.splice(0)) {
     rmSync(directory, { force: true, recursive: true });
   }
+});
+
+/** Read native optimizer hooks while rejecting invalid configuration shapes. */
+const readRolldownPlugins = (config: unknown): { name: string; transform: unknown }[] => {
+  if (!config || typeof config !== 'object' || !('optimizeDeps' in config)) {
+    throw new Error('Expected optimizer configuration');
+  }
+  const optimizer = config.optimizeDeps;
+  if (!optimizer || typeof optimizer !== 'object' || !('rolldownOptions' in optimizer)) {
+    throw new Error('Expected native Rolldown configuration');
+  }
+  expect(optimizer).not.toHaveProperty('esbuildOptions');
+  const options = optimizer.rolldownOptions;
+  if (!options || typeof options !== 'object' || !('plugins' in options) || !Array.isArray(options.plugins)) {
+    throw new Error('Expected native optimizer plugins');
+  }
+  return options.plugins.map((plugin: unknown) => {
+    if (
+      !plugin ||
+      typeof plugin !== 'object' ||
+      !('name' in plugin) ||
+      typeof plugin.name !== 'string' ||
+      !('transform' in plugin)
+    ) {
+      throw new Error('Expected a named native transform');
+    }
+    return { name: plugin.name, transform: plugin.transform };
+  });
+};
+
+describe('Vite 8 native dependency optimization', () => {
+  it.each([
+    ['a.js', "import { DEBUG } from 'logline';\nDEBUG('dependency log');\n"],
+    ['a.cjs', "const { DEBUG } = require('logline');\nDEBUG('dependency log');\n"],
+    ['a.tsx', "import { DEBUG } from 'logline';\nDEBUG('dependency log');\nexport const view = <div />;\n"],
+  ])('preserves dependency attribution and base replacement for %s', async (filename, source) => {
+    mockedVite.version = '8.0.0';
+    const fixture = createFixture();
+    const id = join(dirname(fixture.packageAFile), filename);
+    const code = `${source}export const base = ${LOGLINE_VITE_BASE_MARKER};\n`;
+    writeFileSync(id, code);
+    const plugin = findPlugin(loglineVitePlugin({ level: 'WARN' }), 'logline-pure-strip');
+    const config = await invokeHook(plugin.config, {}, [
+      { root: fixture.root },
+      { command: 'serve', mode: 'development' },
+    ]);
+    const hooks = readRolldownPlugins(config);
+    await invokeHook(plugin.configResolved, {}, [{ root: fixture.root, base: '/synthetic-preview/' }]);
+    let transformed = code;
+    for (const hook of hooks) {
+      expect(hook.transform).toHaveProperty('order', 'pre');
+      const result = await invokeHook(hook.transform, {}, [transformed, id]);
+      expect(result).toMatchObject({ map: { sources: [id], mappings: expect.any(String) } });
+      transformed = readTransformedCode(result);
+    }
+    expect(transformed).toContain(`[npm:npm-a dist/${filename}:2:1] dependency log`);
+    expect(transformed).toContain('DEBUG(');
+    expect(transformed).toContain('base = "/synthetic-preview/"');
+    expect(transformed).not.toContain(LOGLINE_VITE_BASE_MARKER);
+    expect(transformed.match(/\[npm:/g)).toHaveLength(1);
+  });
+
+  it('ignores application modules, virtual modules, assets, and unrelated dependency functions', async () => {
+    mockedVite.version = '8.0.0';
+    const fixture = createFixture();
+    const plugin = findPlugin(loglineVitePlugin(), 'logline-pure-strip');
+    const config = await invokeHook(plugin.config, {}, [
+      { root: fixture.root },
+      { command: 'serve', mode: 'development' },
+    ]);
+    const hooks = readRolldownPlugins(config);
+    for (const id of [join(fixture.root, 'main.js'), '\0virtual:synthetic.js', `${fixture.packageAFile}.css`]) {
+      for (const hook of hooks) {
+        expect(
+          await invokeHook(hook.transform, {}, [
+            `import { LOG } from 'logline'; LOG('application'); const base = ${LOGLINE_VITE_BASE_MARKER};`,
+            id,
+          ]),
+        ).toBeUndefined();
+      }
+    }
+    for (const hook of hooks) {
+      expect(
+        await invokeHook(hook.transform, {}, ["function LOG() {} LOG('unrelated');", fixture.packageAFile]),
+      ).toBeUndefined();
+    }
+  });
+
+  it('does not register optimizer hooks for production or disabled macros', async () => {
+    mockedVite.version = '8.0.0';
+    const fixture = createFixture();
+    for (const command of ['serve', 'build']) {
+      const plugin = findPlugin(loglineVitePlugin({ logPrefixMacro: false }), 'logline-pure-strip');
+      expect(
+        await invokeHook(plugin.config, {}, [{ root: fixture.root }, { command, mode: 'development' }]),
+      ).toBeUndefined();
+    }
+    const plugin = findPlugin(loglineVitePlugin(), 'logline-pure-strip');
+    const config = await invokeHook(plugin.config, {}, [
+      { root: fixture.root },
+      { command: 'build', mode: 'production' },
+    ]);
+    expect(config).not.toHaveProperty('optimizeDeps');
+  });
 });
 
 describe('loglineVitePlugin npm attribution', () => {

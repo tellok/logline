@@ -65,7 +65,7 @@ configureLogline({
 
 ## Vite and auto-import
 
-The Vite peer range supports majors 6, 7, and 8. Verify Node.js compatibility with the selected Vite version.
+The Vite peer range supports majors 6, 7, and 8. Verify Node.js compatibility with the selected Vite version. Development dependency attribution and database-base injection use native `optimizeDeps.rolldownOptions` transforms on Vite 8 and `optimizeDeps.esbuildOptions` hooks on Vite 6/7. Logline selects the integration automatically; do not add an esbuild compatibility adapter on Vite 8.
 
 ```ts
 import { defineConfig } from 'vite';
