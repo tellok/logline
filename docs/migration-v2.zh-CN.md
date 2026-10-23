@@ -4,31 +4,21 @@
 
 v2 提供独立的结构化前端日志能力，采用 MIT 许可证。
 
-| 版本      | 分支   | npm 标签          | API                       |
-| --------- | ------ | ----------------- | ------------------------- |
-| 稳定版 v1 | master | latest            | 构造函数与存储协议        |
-| 实验版 v2 | v2     | 首次发布后为 next | TypeScript 命名导出与插件 |
-
 ## 分支与标签
 
 默认分支维护 v2 beta，稳定 v1 保留在 [v1 分支](https://github.com/tellok/logline/tree/v1)。通过 `logline@beta` 安装 v2；普通安装继续使用已发布 v1 的最新子版本。
 
-## 从 std-logging 迁移
+## 从 v1 迁移
 
-| 原名称                                      | v2 名称                               |
-| ------------------------------------------- | ------------------------------------- |
-| std-logging 或实际发布的带 scope 包名       | logline                               |
-| configureStdLogging                         | configureLogline                      |
-| getStdLoggingConfig / resetStdLoggingConfig | getLoglineConfig / resetLoglineConfig |
-| stdLoggingVitePlugin                        | loglineVitePlugin                     |
-| createStdLoggingAutoImport                  | createLoglineAutoImport               |
-| stdLoggingAutoImportResolvers               | loglineAutoImportResolvers            |
-| StdLoggingConfig / StdLoggingPlugin         | LoglineConfig / LoglinePlugin         |
-| STD_LOGGING_MODULE_ID                       | LOGLINE_MODULE_ID                     |
+v2 重写了 Logline 的公开 API。请将 v1 的构造函数和存储协议调用替换为具名日志函数与插件；v2 不提供 WebSQL 和 localStorage 协议。
 
-原有插件子路径保留在 logline 下。createIndexedDBLoggingPlugin、createClickLogPlugin 和五级日志函数保留名称。
+- 从 `logline` 引入 `TRACE`、`DEBUG`、`LOG`、`WARN` 和 `ERROR`。
+- 使用 `configureLogline` 配置日志，通过 `getLoglineConfig` 和 `resetLoglineConfig` 读取或重置配置。
+- 使用 `logline/vite-plugin` 导出的 `loglineVitePlugin` 注入源码位置前缀并按构建等级过滤日志。
+- 使用 `logline/auto-import` 导出的 `createLoglineAutoImport` 按需接入自动导入。
+- 使用 `logline/plugin/indexeddb` 导出的 `createIndexedDBLoggingPlugin` 配置持久化。历史数据库不会自动导入。
 
-默认数据库名改为 logline 前缀，HTML Interop 全局入口改为 `__LOGLINE_*`。不会自动导入历史数据库；需要读取旧数据库时应显式设置原 databaseName。从 v1 迁移还需调整构造函数与存储调用；v2 不提供 WebSQL 与 localStorage 协议。
+完整示例见 [README](../README.zh-CN.md)，持久化选项见 [IndexedDB 参考](./indexeddb.zh-CN.md)。
 
 ## 发布策略
 

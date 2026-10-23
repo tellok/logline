@@ -8,22 +8,17 @@ v2 provides a standalone structured frontend logger under the MIT license.
 
 The default branch maintains v2 beta. Stable v1 is preserved in the [v1 branch](https://github.com/tellok/logline/tree/v1). Install `logline@beta` for v2; ordinary installs continue using the newest published v1 subversion.
 
-## Migrating from std-logging
+## Migrating from v1
 
-| Previous name                                   | v2 name                                   |
-| ----------------------------------------------- | ----------------------------------------- |
-| `std-logging` or its scoped package name        | `logline`                                 |
-| `configureStdLogging`                           | `configureLogline`                        |
-| `getStdLoggingConfig` / `resetStdLoggingConfig` | `getLoglineConfig` / `resetLoglineConfig` |
-| `stdLoggingVitePlugin`                          | `loglineVitePlugin`                       |
-| `createStdLoggingAutoImport`                    | `createLoglineAutoImport`                 |
-| `stdLoggingAutoImportResolvers`                 | `loglineAutoImportResolvers`              |
-| `StdLoggingConfig` / `StdLoggingPlugin`         | `LoglineConfig` / `LoglinePlugin`         |
-| `STD_LOGGING_MODULE_ID`                         | `LOGLINE_MODULE_ID`                       |
+v2 is a rewrite of the public Logline API. Replace v1 constructor and storage-protocol usage with named logging functions and plugins; v2 does not provide WebSQL or localStorage protocols.
 
-The `plugin/indexeddb`, `plugin/click-log`, `auto-import`, `html-interop`, and `vite-plugin` subpaths remain available under `logline`. `createIndexedDBLoggingPlugin`, `createClickLogPlugin`, and the five logging functions retain their names.
+- Import `TRACE`, `DEBUG`, `LOG`, `WARN`, and `ERROR` from `logline`.
+- Configure logging with `configureLogline`; read or reset configuration with `getLoglineConfig` and `resetLoglineConfig`.
+- Use `loglineVitePlugin` from `logline/vite-plugin` for source prefixes and build-level filtering.
+- Use `createLoglineAutoImport` from `logline/auto-import` for optional auto-import integration.
+- Configure persistence with `createIndexedDBLoggingPlugin` from `logline/plugin/indexeddb`. Existing databases are not imported automatically.
 
-Default database names now start with `logline`, and HTML Interop globals use `__LOGLINE_*`. Historical `std-logging` databases are not imported automatically. Explicitly configure the prior `databaseName` if access to that database is intentional. Migrating from v1 requires adapting the constructor API and storage usage; WebSQL and localStorage protocols are not provided by v2.
+See the [README](../README.md) for complete examples and the [IndexedDB reference](./indexeddb.md) for persistence options.
 
 ## Release policy
 
