@@ -8,7 +8,14 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SourceMapConsumer, type RawSourceMap } from 'source-map-js';
-import { defineConfig, loadEnv, type IndexHtmlTransformContext, type Plugin, type UserConfig } from 'vite';
+import {
+  defineConfig,
+  loadEnv,
+  version as viteVersion,
+  type IndexHtmlTransformContext,
+  type Plugin,
+  type UserConfig,
+} from 'vite';
 import { LOG_LEVELS, LOGLINE_MODULE_ID, LOGLINE_VITE_BASE_MARKER, type LogLevelName } from './core/constants';
 import { resolvePureCalls } from './core/logger';
 import { type IndexedDBLoggingOptions } from './plugins/indexeddb';
@@ -83,6 +90,13 @@ type OrderablePlugin = Plugin & {
   readonly transformIndexHtml?: {
     readonly order?: 'pre' | 'post';
     readonly handler: (html: string, context?: IndexHtmlTransformContext) => string | Promise<string>;
+  };
+};
+
+// Keep compilation compatible with Vite 6 while configuring Vite 8's native optimizer.
+type OptimizerConfig = UserConfig & {
+  optimizeDeps?: UserConfig['optimizeDeps'] & {
+    rolldownOptions?: { plugins: Plugin[] };
   };
 };
 
@@ -866,6 +880,47 @@ const createOptimizeDepsLoggingPlugin = (
 });
 
 /**
+ * Transform dependencies through Vite 8's native Rolldown optimizer.
+ * @param locationResolver Module ownership resolver shared with the application transform.
+ * @param includeFunctionName Whether prefixes include artifact function names.
+ * @param resolveViteBase Read the final deployment base after Vite resolves configuration.
+ * @returns Separate prefix and base hooks so Rolldown composes both source maps.
+ */
+const createRolldownOptimizeDepsPlugins = (
+  locationResolver: ModuleLocationResolver,
+  includeFunctionName: boolean,
+  resolveViteBase: () => string,
+): Plugin[] => [
+  {
+    name: 'logline-dependency-prefix',
+    transform: {
+      order: 'pre',
+      handler(code, id) {
+        if (!OPTIMIZE_DEPS_FILE_PATTERN.test(id)) return undefined;
+        const location = locationResolver.resolve(id);
+        if (!location.packageName) return undefined;
+        return transformLoggingCode(code, id, location, {
+          dropLevelSet: new Set<LogLevelName>(),
+          includeFunctionName,
+          macroEnabled: true,
+          sourcemapRetrack: false,
+        });
+      },
+    },
+  },
+  {
+    name: 'logline-dependency-base',
+    transform: {
+      order: 'pre',
+      handler(code, id) {
+        if (!OPTIMIZE_DEPS_FILE_PATTERN.test(id) || !locationResolver.resolve(id).packageName) return undefined;
+        return transformViteBaseMarker(code, id, resolveViteBase());
+      },
+    },
+  },
+];
+
+/**
  * Resolve the startup script import address.
  * @param option Configured script injection options.
  */
@@ -1046,14 +1101,21 @@ export const loglineVitePlugin = (options: LoglineVitePluginOptions = {}): Plugi
       ]);
       dropLevelSet = new Set<LogLevelName>(resolvePureCalls(logLevelResolution.level));
 
-      const config: UserConfig = {};
+      const config: OptimizerConfig = {};
 
       if (env.command === 'serve' && macroEnabled) {
-        config.optimizeDeps = {
-          esbuildOptions: {
-            plugins: [optimizeDepsLoggingPlugin],
-          },
-        };
+        config.optimizeDeps =
+          Number(viteVersion.split('.')[0]) >= 8
+            ? {
+                rolldownOptions: {
+                  plugins: createRolldownOptimizeDepsPlugins(
+                    moduleLocationResolver,
+                    macroIncludeFunctionName,
+                    () => resolvedViteBase,
+                  ),
+                },
+              }
+            : { esbuildOptions: { plugins: [optimizeDepsLoggingPlugin] } };
       }
 
       // Force sourcemap if needed to ensure accurate line numbers

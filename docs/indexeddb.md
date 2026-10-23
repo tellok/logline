@@ -25,7 +25,7 @@ Without an explicit name, resolution uses the Vite plugin's final base, runtime 
 
 ## Automatic initialization
 
-Final applications can enable `loglineVitePlugin({ indexedDB: true })` or pass an options object as `indexedDB`. Initialization is injected as an import into the application entry and participates in normal bundling and sourcemap composition. This feature is disabled by default and should stay disabled in library builds.
+Final applications can enable `loglineVitePlugin({ indexedDB: true })` or pass an options object as `indexedDB`. Initialization is injected as an import into the application entry and participates in normal bundling and sourcemap composition. Development prebundling preserves the resolved Vite base through native Rolldown transforms on Vite 8 and esbuild hooks on Vite 6/7. This feature is disabled by default and should stay disabled in library builds.
 
 Later calls to `createIndexedDBLoggingPlugin()` reuse the automatic instance and warn once that supplied manual options are ignored. Later `configureLogline()` calls do not replace this automatic instance.
 
