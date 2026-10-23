@@ -20,8 +20,8 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v6
         with:
-          # Bootstrap must also work before the default branch contains .node-version.
-          node-version: 24.22.1
+          node-version-file: .node-version
+          package-manager-cache: false
       - run: node scripts/cleanup-check-ref.mjs
         env:
           GH_TOKEN: ${{ github.token }}

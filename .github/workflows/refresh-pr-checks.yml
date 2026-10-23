@@ -25,16 +25,26 @@ jobs:
       - ubuntu-latest
       - tower-run-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
-      - uses: actions/checkout@v6
+      - name: Check out the workflow revision's Node.js version file
+        uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.repository.default_branch }}
+          ref: ${{ github.sha }}
+          sparse-checkout: .node-version
+          sparse-checkout-cone-mode: false
           persist-credentials: false
       - uses: actions/setup-node@v6
         with:
-          # Bootstrap must also work before the default branch contains .node-version.
-          node-version: 24.22.1
-      - if: hashFiles('scripts/refresh-pr-checks.mjs') != ''
+          node-version-file: .node-version
+          package-manager-cache: false
+      - name: Check out trusted scheduling scripts
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          path: .trusted
+          persist-credentials: false
+      - if: hashFiles('.trusted/scripts/refresh-pr-checks.mjs') != ''
         run: node scripts/refresh-pr-checks.mjs
+        working-directory: .trusted
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ inputs.pr_number }}
