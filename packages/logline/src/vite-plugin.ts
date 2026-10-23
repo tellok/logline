@@ -2,7 +2,7 @@ import { parse, type ParserPlugin } from '@babel/parser';
 import type { default as BabelTraverse, Binding, NodePath } from '@babel/traverse';
 import * as traverseModule from '@babel/traverse';
 import * as t from '@babel/types';
-import { build as esbuild, type Loader, type Plugin as EsbuildPlugin } from 'esbuild';
+import { build as esbuild, type Loader } from 'esbuild';
 import MagicString, { type SourceMap as MagicStringSourceMap } from 'magic-string';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
@@ -84,7 +84,7 @@ export interface LoglineVitePluginOptions {
       };
 }
 
-// Vite 6/7/8 support order/handler; extend the fields to accommodate their Plugin definitions.
+// Vite 5/6/7/8 support order/handler; extend the fields to accommodate their Plugin definitions.
 type OrderablePlugin = Plugin & {
   readonly order?: 'pre' | 'post';
   readonly transformIndexHtml?: {
@@ -93,12 +93,17 @@ type OrderablePlugin = Plugin & {
   };
 };
 
-// Keep compilation compatible with Vite 6 while configuring Vite 8's native optimizer.
+// Keep compilation compatible with Vite 5/6 while configuring Vite 8's native optimizer.
 type OptimizerConfig = UserConfig & {
   optimizeDeps?: UserConfig['optimizeDeps'] & {
     rolldownOptions?: { plugins: Plugin[] };
   };
 };
+
+// Use the consuming Vite version's esbuild types; Vite 5 uses an older esbuild API.
+type ViteEsbuildPlugin = NonNullable<
+  NonNullable<NonNullable<UserConfig['optimizeDeps']>['esbuildOptions']>['plugins']
+>[number];
 
 /**
  * Normalize an external level string into a supported level.
@@ -848,7 +853,7 @@ const createOptimizeDepsLoggingPlugin = (
   locationResolver: ModuleLocationResolver,
   includeFunctionName: boolean,
   resolveViteBase: () => string,
-): EsbuildPlugin => ({
+): ViteEsbuildPlugin => ({
   name: 'logline-dependency-prefix',
   setup(build) {
     build.onLoad({ filter: OPTIMIZE_DEPS_FILE_PATTERN, namespace: 'file' }, (args) => {

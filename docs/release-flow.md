@@ -28,6 +28,8 @@ Synthetic check refs are removed only after all their CI consumers complete, inc
 
 The verification command runs type checks, lint, release-contract tests, product tests, formatting, one product build, and package-entry checks. A job-local structured Vitest report must show nonzero tests, every test passed, and zero skipped tests. Reports are not uploaded; counts appear in logs and Job Summary.
 
+A separate CI matrix tests the packed package against the latest stable release within each supported Vite major (5, 6, 7, and 8). Each consumer installs its own Vite and checks strict public types, development transforms and dependency optimization, production stripping, source attribution, base injection, IndexedDB initialization, HTML startup capture, and sourcemaps. Run `pnpm run build && pnpm run test:vite` locally, or append `-- 5` to select one major. The repository toolchain stays on Vite 6 so Vitest can run independently of consumer Vite versions.
+
 PR builds stay local and never become release inputs. After source eligibility succeeds, the release job checks out that exact merge source, repeats quality verification, builds once, and packs the validated dist with scripts disabled. It publishes this exact tarball to npm with beta and uploads the same tarball and its digest/source manifest as durable GitHub prerelease assets. It does not rebuild for another consumer or upload a CI transfer copy.
 
 Release notes come from exactly one chapter for the actual version in each changelog. Missing or duplicate chapters fail. No previous chapters or pending changes are included. Existing npm versions, tags, and release assets are reused only if their immutable identities/digests match; conflicts are rejected, never overwritten.

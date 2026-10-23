@@ -69,7 +69,7 @@ export default defineConfig({
 
 The minimum build level is resolved from the explicit `level`, process `VITE_LOG_LEVEL`, Vite `.env*` files, then `LOG`. Prefixes are injected for string literals and template literals. npm dependencies receive their installed package name and published artifact location; application namespaces do not override dependency attribution.
 
-The Vite peer range is `^6.2.1 || ^7.0.0 || ^8.0.0`. Higher Vite versions also require a compatible Node.js version. Development dependency attribution uses native Rolldown transforms on Vite 8 and esbuild hooks on Vite 6/7; no optimizer configuration is required.
+The Vite peer range is `^5.2.8 || ^6.2.1 || ^7.0.0 || ^8.0.0`. Higher Vite versions also require a compatible Node.js version. Development dependency attribution uses native Rolldown transforms on Vite 8 and esbuild hooks on Vite 5/6/7; no optimizer configuration is required. CI tests packed-package consumers against the latest release of each supported Vite major (5–8).
 
 ## Auto-import
 

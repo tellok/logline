@@ -19,7 +19,8 @@
     "docs:dev": "node scripts/prepare-docs.mjs && vitepress dev",
     "docs:build": "node scripts/prepare-docs.mjs && vitepress build && node scripts/check-docs.mjs",
     "docs:preview": "vitepress preview",
-    "pack:logline": "pnpm --dir packages/logline pack --pack-destination ../.."
+    "pack:logline": "pnpm --dir packages/logline pack --pack-destination ../..",
+    "test:vite": "node scripts/test-vite.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "2.29.7",
