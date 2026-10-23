@@ -1,0 +1,9 @@
+**/dist/
+**/node_modules/
+.nx/
+.docs-site/
+packages/logline/README*.md
+packages/logline/LICENSE
+packages/logline/docs/
+packages/logline/skills/
+pnpm-lock.yaml

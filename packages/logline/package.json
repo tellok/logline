@@ -1,0 +1,127 @@
+{
+  "name": "logline",
+  "version": "2.0.0-beta.0",
+  "description": "Structured frontend logging with Vite integration, IndexedDB persistence, and startup error capture.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./auto-import": {
+      "types": "./dist/auto-import.d.ts",
+      "import": "./dist/auto-import.js",
+      "require": "./dist/auto-import.cjs"
+    },
+    "./plugin/*": {
+      "types": "./dist/plugins/*/index.d.ts",
+      "import": "./dist/plugins/*/index.js",
+      "require": "./dist/plugins/*/index.cjs"
+    },
+    "./html-interop": {
+      "types": "./dist/html-interop.d.ts",
+      "import": "./dist/html-interop.js",
+      "require": "./dist/html-interop.cjs"
+    },
+    "./vite-plugin": {
+      "types": "./dist/vite-plugin.d.ts",
+      "import": "./dist/vite-plugin.js",
+      "require": "./dist/vite-plugin.cjs"
+    },
+    "./docs/*": "./docs/*"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "docs",
+    "skills",
+    "README.zh-CN.md"
+  ],
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build",
+    "test": "vitest run src",
+    "lint": "eslint src vite.config.ts --max-warnings 0",
+    "type-check": "tsc --noEmit",
+    "prepack": "pnpm --dir ../.. run type-check && pnpm --dir ../.. exec nx run logline:build && node ../../scripts/prepare-package.mjs",
+    "prepublishOnly": "node ../../scripts/check-prerelease.mjs"
+  },
+  "keywords": [
+    "logging",
+    "frontend",
+    "typescript",
+    "vite",
+    "indexeddb",
+    "error-monitoring"
+  ],
+  "author": "latel <latelx64@icloud.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@babel/parser": "^7.26.3",
+    "@babel/traverse": "^7.26.3",
+    "@babel/types": "^7.26.3",
+    "esbuild": "^0.25.11",
+    "magic-string": "^0.30.12",
+    "source-map-js": "^1.2.1"
+  },
+  "peerDependencies": {
+    "vite": "^6.2.1 || ^7.0.0 || ^8.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "beta",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tellok/logline.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tellok/logline/issues"
+  },
+  "homepage": "https://github.com/tellok/logline#readme",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "nx": {
+    "targets": {
+      "build": {
+        "dependsOn": [
+          "^build",
+          "type-check"
+        ],
+        "outputs": [
+          "{projectRoot}/dist"
+        ]
+      },
+      "test": {
+        "outputs": []
+      },
+      "lint": {
+        "outputs": []
+      },
+      "type-check": {
+        "dependsOn": [
+          "^type-check"
+        ],
+        "outputs": []
+      }
+    }
+  },
+  "devDependencies": {
+    "@microsoft/api-extractor": "^7.55.0",
+    "@types/babel__traverse": "^7.20.6",
+    "fake-indexeddb": "^6.2.5",
+    "unplugin-dts": "1.0.0-beta.6",
+    "vite": "^6.2.1",
+    "vite-plugin-externalize-deps": "^0.10.0",
+    "vitest": "^4.0.13",
+    "typescript": "5.8.2",
+    "@types/node": "^24.10.1"
+  }
+}

@@ -63,3 +63,5 @@ npm 信任关系为 tellok/logline 的 release.yml，不限制 environment，允
 Pages 部署需要一个供 deploy-pages 消费的临时制品。部署尝试结束后，作业删除该精确制品；执行器丢失导致无法清理时，一天过期限制保留时间。删除临时制品不会移除已部署的站点。文档构建或部署失败使发布流水线失败；已成功上传的 npm 版本仍保留，恢复时核验其内容。
 
 本地使用 pnpm docs:dev、pnpm docs:build 和 pnpm docs:preview。README 和 Markdown 指南是唯一内容来源；生成的暂存目录和站点产物均被忽略且不进入 npm 包。
+
+私有 workspace 根包负责工具链，可发布清单与双语更新日志位于 `packages/logline`。版本准备只更新该包元数据，不构建产品。交付前会从根目录源文件生成公开文档副本并验证包。详见 [Workspace 指南](./workspace.zh-CN.md)。

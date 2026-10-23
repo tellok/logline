@@ -14,7 +14,7 @@ npm install logline@beta
 pnpm add logline@beta
 ```
 
-See [release status](https://www.npmjs.com/package/logline?activeTab=versions) for published versions. Development requires Node.js 24 and pnpm 10.20.0.
+See [release status](https://www.npmjs.com/package/logline?activeTab=versions) for published versions. Development uses Node.js 24.22.1 LTS and pnpm 11.25.0 with automatic selection and advisory version checks. See the [workspace guide](./docs/workspace.md).
 
 ## Logging
 
@@ -111,6 +111,8 @@ HTML Interop is opt-in. It buffers up to 1,000 startup records until IndexedDB t
 Declare the experimental Logline version in both `peerDependencies` and `devDependencies`, for example `2.0.0-beta.0`. Keep `logline` external in library builds so the consuming application provides one instance. If you use the Vite plugin while building a library, explicitly set `logPrefixMacro: false` and keep `indexedDB: false`; the final application owns attribution and persistence.
 
 ## Development and releases
+
+The pnpm workspace keeps the publishable library in `packages/logline` and reserves `apps/*` for future applications. Nx caches builds and checks. See the bilingual [workspace guide](./docs/workspace.md) for toolchain selection, commands, caching, and packaging.
 
 ```sh
 pnpm install

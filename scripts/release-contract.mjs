@@ -10,13 +10,14 @@ const require = createRequire(import.meta.url);
 export const VERSION_BRANCH = 'codex/version-packages';
 export const VERSION_MARKER = '<!-- logline-version-pr -->';
 export const VERSION_FILES = [
-  'package.json',
+  'packages/logline/package.json',
   'pnpm-lock.yaml',
-  'CHANGELOG.md',
-  'CHANGELOG.zh-CN.md',
+  'packages/logline/CHANGELOG.md',
+  'packages/logline/CHANGELOG.zh-CN.md',
   '.changeset/pre.json',
   '.release/version-plan.json',
 ];
+export const PACKAGE_MANIFEST = 'packages/logline/package.json';
 export const root = fileURLToPath(new URL('../', import.meta.url));
 
 /** Read a JSON contract from a checkout; malformed or missing files fail closed. */
@@ -42,7 +43,7 @@ export const api = (path, options = {}) => {
 export const project = () => {
   const repository =
     process.env.GITHUB_REPOSITORY ||
-    readJson('package.json').repository.url.match(/github\.com[/:]([^/]+\/[^/]+?)(?:\.git)?$/)?.[1];
+    readJson(PACKAGE_MANIFEST).repository.url.match(/github\.com[/:]([^/]+\/[^/]+?)(?:\.git)?$/)?.[1];
   assert.ok(repository, 'Unable to discover GitHub repository');
   const metadata = api(`repos/${repository}`);
   return { repository, defaultBranch: metadata.default_branch };
@@ -95,11 +96,11 @@ export const output = (name, value) => {
 
 /** Consume Changesets without building a product and record deterministic public provenance. */
 export const prepareFiles = (cwd, baseSha) => {
-  const pkg = readJson('package.json', cwd);
+  const pkg = readJson(PACKAGE_MANIFEST, cwd);
   const pre = readJson('.changeset/pre.json', cwd);
   assert.equal(pre.mode, 'pre');
   assert.equal(pre.tag, 'beta');
-  assert.equal(pkg.devDependencies['@changesets/cli'], '2.29.7');
+  assert.equal(readJson('package.json', cwd).devDependencies['@changesets/cli'], '2.29.7');
   const translations = readJson('.changeset/translations.json', cwd);
   const changesets = pendingChangesets(cwd).map((file) => {
     const id = file.slice(0, -3);
@@ -111,11 +112,14 @@ export const prepareFiles = (cwd, baseSha) => {
   });
   assert.ok(changesets.length, 'No unconsumed Changesets');
   command(process.execPath, [resolve(root, 'node_modules/@changesets/cli/bin.js'), 'version'], cwd);
-  const versioned = readJson('package.json', cwd);
+  const versioned = readJson(PACKAGE_MANIFEST, cwd);
   assertBeta(versioned);
-  const chinese = readFileSync(resolve(cwd, 'CHANGELOG.zh-CN.md'), 'utf8');
+  const chinese = readFileSync(resolve(cwd, 'packages/logline/CHANGELOG.zh-CN.md'), 'utf8');
   const chapter = `## ${versioned.version}\n\n${changesets.map((item) => `- ${item.translation}`).join('\n')}\n\n`;
-  writeFileSync(resolve(cwd, 'CHANGELOG.zh-CN.md'), chinese.replace(/(^# [^\n]+\n)/, `$1\n${chapter}`));
+  writeFileSync(
+    resolve(cwd, 'packages/logline/CHANGELOG.zh-CN.md'),
+    chinese.replace(/(^# [^\n]+\n)/, `$1\n${chapter}`),
+  );
   command(
     process.execPath,
     [
@@ -136,8 +140,8 @@ export const prepareFiles = (cwd, baseSha) => {
     changesets,
   };
   writeFileSync(resolve(cwd, '.release/version-plan.json'), `${JSON.stringify(plan, undefined, 2)}\n`);
-  releaseChapter(readFileSync(resolve(cwd, 'CHANGELOG.md'), 'utf8'), plan.version);
-  releaseChapter(readFileSync(resolve(cwd, 'CHANGELOG.zh-CN.md'), 'utf8'), plan.version);
+  releaseChapter(readFileSync(resolve(cwd, 'packages/logline/CHANGELOG.md'), 'utf8'), plan.version);
+  releaseChapter(readFileSync(resolve(cwd, 'packages/logline/CHANGELOG.zh-CN.md'), 'utf8'), plan.version);
   return plan;
 };
 

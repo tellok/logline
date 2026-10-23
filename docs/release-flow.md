@@ -70,3 +70,5 @@ After verified npm and GitHub release delivery succeeds, the documentation job c
 A single Pages artifact is required by the deploy-pages consumer. The job deletes that exact artifact after the deployment attempt; a one-day expiry limits retention if runner loss prevents cleanup. Deleting this transfer artifact does not remove the deployed site. Documentation build or deployment failure fails the release workflow; a successful npm upload remains published and is verified on recovery.
 
 For local work, use pnpm docs:dev, pnpm docs:build, and pnpm docs:preview. README and Markdown guides remain the source of truth; generated staging and output are ignored and excluded from npm packaging.
+
+The private workspace root owns tooling; the publishable manifest and bilingual changelogs live in `packages/logline`. Version preparation targets that package without building it. Package verification stages public documentation from root sources before delivery. See the [workspace guide](./workspace.md).
