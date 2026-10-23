@@ -2,5 +2,6 @@
   "first-v2-beta": "推出 TypeScript v2 beta，提供结构化日志、Vite 集成、IndexedDB 持久化、启动阶段捕获与自动导入。",
   "documentation-pages": "新增双语在线文档，在经核验的 beta 版本发布后部署到 GitHub Pages。",
   "vite8-native-optimizer": "修复 Vite 8 开发模式启动失败，改用原生 Rolldown 依赖转换，同时保留依赖来源标注、按部署路径隔离的 IndexedDB 名称以及 Vite 6/7 支持。",
+  "workspace-foundation": "将库迁移至 pnpm workspace，配置 Nx 任务缓存与固定开发工具链，适配打包和发布验证，并为未来 logline-server 保留应用目录约定。",
   "vite5-compatibility": "支持 Vite 5.2.8 及以上版本，使用与消费者兼容的 esbuild 类型，并在 CI 中测试打包产物对 Vite 5、6、7、8 最新版本的兼容性。"
 }

@@ -17,7 +17,7 @@ try {
   for (const counter of ['fail', 'cancelled', 'skipped', 'todo'])
     assert.match(contractTests, new RegExp(`^# ${counter} 0$`, 'm'), `Release-contract ${counter} count must be zero`);
   const report = join(folder, 'vitest.json');
-  run('pnpm', ['run', 'test', '--reporter=json', `--outputFile=${report}`]);
+  run('pnpm', ['--filter', 'logline', 'test', '--reporter=json', `--outputFile=${report}`]);
   const tests = JSON.parse(readFileSync(report, 'utf8'));
   assert.ok(tests.numTotalTests > 0, 'An empty test suite cannot authorize release');
   assert.equal(tests.numPendingTests, 0, 'Skipped tests block release');
@@ -26,6 +26,7 @@ try {
   process.stdout.write(`Verified ${tests.numPassedTests}/${tests.numTotalTests} product tests; zero skipped.\n`);
   run('pnpm', ['run', 'format:check']);
   run('pnpm', ['run', 'build']);
+  run(process.execPath, ['scripts/prepare-package.mjs']);
   run(process.execPath, ['scripts/check-package.mjs']);
   if (process.env.GITHUB_STEP_SUMMARY) {
     const { appendFileSync } = await import('node:fs');

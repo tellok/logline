@@ -23,7 +23,7 @@ for (const source of sources) {
 }
 mkdirSync(join(staging, 'public'), { recursive: true });
 writeFileSync(join(staging, 'public/LICENSE.txt'), readFileSync(join(root, 'LICENSE')));
-const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
+const pkg = JSON.parse(readFileSync(join(root, 'packages/logline/package.json'), 'utf8'));
 const sourceSha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
 writeFileSync(
   join(staging, 'public/release.json'),

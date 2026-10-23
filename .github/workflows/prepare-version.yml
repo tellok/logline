@@ -28,7 +28,7 @@ jobs:
       - if: steps.pending.outputs.pending == 'true'
         uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version-file: .node-version
           cache: pnpm
       - if: steps.pending.outputs.pending == 'true'
         run: pnpm install --frozen-lockfile
