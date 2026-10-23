@@ -30,7 +30,7 @@
 
 创建插件实例，用于传递给 `configureLogline`。
 
-开发环境的依赖预构建会保留最终解析的 Vite base：Vite 8 使用原生 Rolldown 转换，Vite 6/7 使用 esbuild 钩子。
+开发环境的依赖预构建会保留最终解析的 Vite base：Vite 8 使用原生 Rolldown 转换，Vite 5/6/7 使用 esbuild 钩子。
 
 标准 Vite 最终应用也可以显式开启自动初始化，该选项默认关闭：
 
