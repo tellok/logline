@@ -18,7 +18,7 @@ pnpm add logline@beta
 
 ## 迁移与单实例
 
-原 `std-logging` 包暂时保留，逐步迁移到 `logline`。函数和类型中的 `StdLogging` / `stdLogging` 改为 `Logline` / `logline`，例如 `configureLogline`、`loglineVitePlugin`、`createLoglineAutoImport`。数据库默认名称与全局标记同步改名，历史数据库不会自动导入。详见[迁移说明](./docs/migration-v2.zh-CN.md)。
+从 v1 升级时，需要将构造函数与存储协议调用调整为 v2 的具名日志函数与插件 API。v2 不会自动导入历史数据库。详见[迁移说明](./docs/migration-v2.zh-CN.md)。
 
 npm 库应在 `peerDependencies` 和 `devDependencies` 中声明明确的实验版本（例如 `2.0.0-beta.0`），构建时保持 `logline` 为外部依赖，由最终应用提供单一实例。库构建使用 Vite 插件时，显式设置 `logPrefixMacro: false` 并保持 `indexedDB: false`。
 
