@@ -1,0 +1,9 @@
+packages:
+  - 'packages/*'
+  - 'apps/*'
+
+engineStrict: false
+pmOnFail: download
+allowBuilds:
+  esbuild: true
+  nx: true

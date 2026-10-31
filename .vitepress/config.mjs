@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vitepress';
 
-const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+const { version } = JSON.parse(readFileSync(new URL('../packages/logline/package.json', import.meta.url), 'utf8'));
 
 /** Publish both languages at the project Pages path; VitePress rejects broken links during build. */
 export default defineConfig({
@@ -24,6 +24,7 @@ export default defineConfig({
               { text: 'IndexedDB persistence', link: '/docs/indexeddb' },
               { text: 'Click logging', link: '/docs/click-log' },
               { text: 'Migration', link: '/docs/migration-v2' },
+              { text: 'Workspace development', link: '/docs/workspace' },
               { text: 'Release flow', link: '/docs/release-flow' },
             ],
           },
@@ -43,6 +44,7 @@ export default defineConfig({
               { text: 'IndexedDB 持久化', link: '/zh/docs/indexeddb' },
               { text: '点击日志', link: '/zh/docs/click-log' },
               { text: '迁移说明', link: '/zh/docs/migration-v2' },
+              { text: 'Workspace 开发', link: '/zh/docs/workspace' },
               { text: '发布流程', link: '/zh/docs/release-flow' },
             ],
           },

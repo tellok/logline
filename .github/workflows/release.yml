@@ -33,7 +33,7 @@ jobs:
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - id: proof
@@ -61,7 +61,7 @@ jobs:
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version-file: .node-version
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
       - run: npm install --global npm@11.15.0
@@ -95,7 +95,7 @@ jobs:
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version-file: .node-version
           cache: pnpm
       - uses: actions/configure-pages@v6
       - run: pnpm install --frozen-lockfile

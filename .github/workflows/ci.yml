@@ -21,6 +21,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   verify:
+    env:
+      NX_DAEMON: false
     runs-on:
       - self-hosted
       - tower
@@ -37,8 +39,8 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v6
         with:
-          node-version: 24
-      - uses: pnpm/action-setup@v4
+          node-version-file: .node-version
+      - uses: pnpm/action-setup@v6
       - run: node scripts/check-pr-context.mjs
         env:
           GH_TOKEN: ${{ github.token }}
@@ -46,6 +48,17 @@ jobs:
           EXPECTED_HEAD: ${{ inputs.source_sha }}
           EXPECTED_BASE: ${{ inputs.target_sha }}
       - run: pnpm install --frozen-lockfile
+      - name: Identify the local Nx cache machine
+        id: nx-machine
+        run: echo "id=$(sha256sum /etc/machine-id | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .nx/cache
+            .nx/workspace-data
+          key: nx-${{ runner.os }}-${{ runner.arch }}-${{ steps.nx-machine.outputs.id }}-${{ github.event_name }}-${{ github.event.pull_request.number || inputs.pr_number }}-${{ hashFiles('pnpm-lock.yaml', '.node-version', 'nx.json') }}-${{ github.sha }}
+          restore-keys: |
+            nx-${{ runner.os }}-${{ runner.arch }}-${{ steps.nx-machine.outputs.id }}-${{ github.event_name }}-${{ github.event.pull_request.number || inputs.pr_number }}-${{ hashFiles('pnpm-lock.yaml', '.node-version', 'nx.json') }}-
       - run: pnpm run verify
       - run: pnpm run docs:build
       - run: node scripts/check-pr-context.mjs
@@ -77,8 +90,8 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v6
         with:
-          node-version: 24
-      - uses: pnpm/action-setup@v4
+          node-version-file: .node-version
+      - uses: pnpm/action-setup@v6
       - run: node scripts/check-pr-context.mjs
         env:
           GH_TOKEN: ${{ github.token }}

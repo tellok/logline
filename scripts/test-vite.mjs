@@ -4,6 +4,7 @@ import { copyFileSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFile
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { preparePackage } from './prepare-package.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const supportedMajors = ['5', '6', '7', '8'];
@@ -18,8 +19,9 @@ assert.ok(
 const folder = realpathSync(mkdtempSync(join(tmpdir(), 'logline-vite-compatibility-')));
 const run = (program, args, cwd) => execFileSync(program, args, { cwd, stdio: 'inherit' });
 try {
+  preparePackage(root);
   execFileSync('pnpm', ['pack', '--pack-destination', folder], {
-    cwd: root,
+    cwd: join(root, 'packages/logline'),
     stdio: ['ignore', 'pipe', 'inherit'],
     env: { ...process.env, npm_config_ignore_scripts: 'true' },
   });

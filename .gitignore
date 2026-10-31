@@ -8,3 +8,10 @@ coverage/
 .docs-site/
 .vitepress/cache/
 .vitepress/dist/
+
+# Nx task cache and generated package documentation
+.nx/
+packages/logline/README*.md
+packages/logline/LICENSE
+packages/logline/docs/
+packages/logline/skills/

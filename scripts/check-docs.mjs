@@ -12,6 +12,6 @@ for (const page of ['index.html', 'zh/index.html', 'docs/indexeddb.html', 'zh/do
   assert.match(html, /\/logline\/assets\//, 'Documentation assets must use the project Pages base');
 }
 const metadata = JSON.parse(readFileSync(join(output, 'release.json'), 'utf8'));
-assert.equal(metadata.version, JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version);
+assert.equal(metadata.version, JSON.parse(readFileSync(join(root, 'packages/logline/package.json'), 'utf8')).version);
 assert.equal(metadata.sourceSha, execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim());
 process.stdout.write('Verified bilingual documentation, project asset paths, version, and source SHA.\n');
