@@ -16,11 +16,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   eligibility:
-    runs-on:
-      - self-hosted
-      - tower
-      - ubuntu-latest
-      - tower-run-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: 'ubuntu-latest'
     outputs:
       eligible: ${{ steps.proof.outputs.eligible }}
       source_sha: ${{ steps.proof.outputs.source_sha }}
@@ -43,11 +39,7 @@ jobs:
   publish:
     needs: eligibility
     if: needs.eligibility.outputs.eligible == 'true'
-    runs-on:
-      - self-hosted
-      - tower
-      - ubuntu-latest
-      - tower-run-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: 'ubuntu-latest'
     permissions:
       contents: write
       pull-requests: read
@@ -74,11 +66,7 @@ jobs:
   documentation:
     needs: [eligibility, publish]
     if: needs.eligibility.outputs.eligible == 'true'
-    runs-on:
-      - self-hosted
-      - tower
-      - ubuntu-latest
-      - tower-run-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: 'ubuntu-latest'
     permissions:
       contents: read
       pages: write
