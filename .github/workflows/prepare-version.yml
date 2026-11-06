@@ -12,11 +12,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   prepare:
-    runs-on:
-      - self-hosted
-      - tower
-      - ubuntu-latest
-      - tower-run-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: 'ubuntu-latest'
     steps:
       - uses: actions/checkout@v6
         with:
