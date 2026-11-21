@@ -19,11 +19,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   schedule:
-    runs-on:
-      - self-hosted
-      - tower
-      - ubuntu-latest
-      - tower-run-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: 'ubuntu-latest'
     steps:
       - name: Check out the workflow revision
         uses: actions/checkout@v6
