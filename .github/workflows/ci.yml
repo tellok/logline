@@ -21,6 +21,13 @@ concurrency:
   cancel-in-progress: true
 jobs:
   verify:
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['127.0.0.1::5432']
+        options: --health-cmd pg_isready --health-interval 2s --health-timeout 3s --health-retries 20
     env:
       NX_DAEMON: false
     runs-on:
@@ -60,6 +67,8 @@ jobs:
           restore-keys: |
             nx-${{ runner.os }}-${{ runner.arch }}-${{ steps.nx-machine.outputs.id }}-${{ github.event_name }}-${{ github.event.pull_request.number || inputs.pr_number }}-${{ hashFiles('pnpm-lock.yaml', '.node-version', 'nx.json') }}-
       - run: pnpm run verify
+        env:
+          TEST_DATABASE_URL: postgres://postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/postgres
       - run: pnpm run docs:build
       - run: node scripts/check-pr-context.mjs
         env:

@@ -2,13 +2,15 @@
 
 [English](./workspace.md) | 简体中文
 
-仓库采用 pnpm workspace 和 Nx。`packages/logline` 是可发布的 v2 beta 库，根包为私有包。`apps/*` 为未来应用保留，包括 [logline-server（#53）](https://github.com/tellok/logline/issues/53)，本次不实现服务端。
+workspace 包含两个公开 beta 包：`packages/logline`（日志库和可选上报调度器）、`packages/logserver-reporter`（HTTP 上传包）。`packages/logline-server` 为基于 PostgreSQL 的私有服务包，部署步骤见[运维指南](./server-operations.zh-CN.md)。
 
 ## 工具链
 
 开发基线为 Node.js **24.22.1 LTS** 与 **pnpm 11.25.0**。`.node-version` 供 fnm、mise 等版本管理器识别；`packageManager` 固定 pnpm，`pmOnFail: download` 支持自动切换。`engines.runtime` 为 pnpm 脚本和 `pnpm exec` 选择 Node.js，不替换交互式终端的 Node.js。单独安装并启用 Corepack 后，也可自动选择固定的 pnpm。
 
 根包通过 pnpm 的 `engines.runtime` 选择运行时，避免 npm 将其作为严格开发版本校验；engine 校验为提示性质，pnpm 通过 `download` 选择固定工具而不因版本不一致报错，版本配置用于自动选择工具链，不会因兼容的宿主版本不同而拒绝执行。升级时需同步 `.node-version` 与 `engines.runtime`。CI 从 `.node-version` 与根包的 `packageManager` 读取版本。
+
+执行 `test` 和 `verify` 前，将 `TEST_DATABASE_URL` 设为可丢弃的 PostgreSQL 16 数据库连接串。上传包集成测试使用真实服务和构建后的包。
 
 ```sh
 pnpm install --frozen-lockfile
@@ -20,10 +22,11 @@ pnpm run build
 pnpm run verify
 pnpm run docs:build
 pnpm run pack:logline
-node scripts/check-package.mjs
+pnpm run pack:reporter
+node scripts/check-package.mjs --reporter
 ```
 
-`verify` 审核产品测试实际执行数量及发布契约测试，再检查格式、构建库、准备公开文档副本并验证导出。审核中的产品测试直接执行，避免缓存命中导致临时报告文件缺失。`pack:logline` 在库目录执行 `pnpm pack`，产出根目录下的压缩包。打包生命周期通过 Nx 检查类型与构建，再从根目录刷新 README、许可证、文档和消费端 Skill 副本。生成副本已忽略，应修改根目录源文件。
+`verify` 要求核心库、服务端、上传包和发布契约测试全部执行，不得跳过。它检查格式、构建两个库并准备公开文档副本，随后将两个真实的压缩包解包到临时消费项目中，检查上传包发布时的 peer 依赖版本，以及 ESM、CommonJS 和严格 TypeScript 导入。审核中的产品测试直接执行，避免缓存命中导致临时报告文件缺失。`pack:logline` 在库目录执行 `pnpm pack`，产出根目录下的压缩包。打包生命周期通过 Nx 检查类型与构建，再从根目录刷新 README、许可证、文档和消费端 Skill 副本。生成副本已忽略，应修改根目录源文件。
 
 ## 目录与任务缓存
 
@@ -50,4 +53,4 @@ pnpm run clean
 
 ## 发布
 
-Changesets 从根目录运行，更新 `packages/logline/package.json` 与库内更新日志，私有根包没有发布版本。版本 PR 准备只更新发布元数据，不构建或发布产品。原有 beta 约束仍遵循[发布契约](./release-flow.zh-CN.md)。
+Changesets 同步更新两个公开包；打包时 pnpm 将上传包的 workspace peer 替换为对应的 beta 版本。版本与发布检查请参阅[发布契约](./release-flow.zh-CN.md)。

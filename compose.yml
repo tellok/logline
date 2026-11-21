@@ -1,0 +1,55 @@
+services:
+  db:
+    image: postgres:17-bookworm@sha256:837bed18782820fe967067cb5328b02b0d9992c1be9a37ee0c9c492cfc03af3b
+    environment:
+      POSTGRES_DB: logline
+      POSTGRES_USER: logline
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Generate a random hex database password}
+    volumes:
+      - data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD, pg_isready, -U, logline, -d, logline]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+  server:
+    image: ${LOGLINE_IMAGE:-logline-server:local}
+    build:
+      context: .
+      dockerfile: packages/logline-server/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://logline:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@db:5432/logline
+      LOGLINE_ADMIN_TOKEN: ${LOGLINE_ADMIN_TOKEN:?Generate a high-entropy admin bearer}
+      LOGLINE_MCP_ENABLED: ${LOGLINE_MCP_ENABLED:-false}
+      INGEST_CONCURRENCY: ${INGEST_CONCURRENCY:-12}
+      QUERY_CONCURRENCY: ${QUERY_CONCURRENCY:-4}
+      PROJECT_EVENTS_PER_MINUTE: ${PROJECT_EVENTS_PER_MINUTE:-60000}
+      PROJECT_BYTES_PER_MINUTE: ${PROJECT_BYTES_PER_MINUTE:-67108864}
+      RETENTION_DAYS: ${RETENTION_DAYS:-30}
+      MAX_BODY_BYTES: ${MAX_BODY_BYTES:-1048576}
+      MAX_BATCH_EVENTS: ${MAX_BATCH_EVENTS:-500}
+    ports:
+      - '127.0.0.1:${LOGLINE_PORT:-4318}:4318'
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    stop_grace_period: 30s
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://127.0.0.1:4318/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 15s
+    restart: unless-stopped
+volumes:
+  data: {}

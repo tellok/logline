@@ -1,6 +1,8 @@
 node_modules/
 dist/
 coverage/
+/.env
+/logline-secrets.env
 *.tgz
 .DS_Store
 

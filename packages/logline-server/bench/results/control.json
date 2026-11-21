@@ -1,0 +1,97 @@
+{
+  "profile": {
+    "replicas": 2,
+    "projects": 24,
+    "seconds": 120,
+    "eventsPerSecond": 1000,
+    "batch": 50,
+    "writers": 6,
+    "readers": 0,
+    "hot": false,
+    "mcp": true,
+    "padding": 192
+  },
+  "wallSeconds": 119.792063959,
+  "generated": 113500,
+  "accepted": 113500,
+  "offeredBytes": 41649100,
+  "acceptedBytes": 41649100,
+  "eventsPerSec": 947.4751185424643,
+  "bytesPerSec": 347678.29039371765,
+  "statuses": {
+    "upload:200": 2270
+  },
+  "failures": {},
+  "retryAttempts": 0,
+  "deferred": 0,
+  "ackErrors": 0,
+  "maxClientInflightEvents": 300,
+  "firstAckAfterFailureMs": null,
+  "visibilityFailures": 0,
+  "latency": {
+    "uploadAttemptMs": {
+      "n": 2270,
+      "p95": 342.91,
+      "p99": 831.91
+    },
+    "uploadAckMs": {
+      "n": 2270,
+      "p95": 342.99,
+      "p99": 831.98
+    },
+    "ackToVisibleMs": {
+      "n": 57,
+      "p95": 92.84,
+      "p99": 270.83
+    }
+  },
+  "replayOk": true,
+  "counts": [
+    4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4700, 4700, 4700, 4700, 4700,
+    4700, 4700, 4700, 4700, 4700
+  ],
+  "acks": [
+    4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4700, 4700, 4700, 4700, 4700,
+    4700, 4700, 4700, 4700, 4700
+  ],
+  "offered": [
+    4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4700, 4700, 4700, 4700, 4700,
+    4700, 4700, 4700, 4700, 4700
+  ],
+  "revokedStatus": [401, 401],
+  "environment": {
+    "dockerVM": {
+      "cpus": 10,
+      "memoryBytes": 12528967680,
+      "arch": "aarch64",
+      "engine": "29.0.1"
+    },
+    "postgres": "17.12 (Debian 17.12-1.pgdg12+1)",
+    "nodeImageVersion": "v24.22.1"
+  },
+  "resources": {
+    "samples": {
+      "db-1": {
+        "samples": 21,
+        "meanCpuPct": 43.65,
+        "peakCpuPct": 123.28,
+        "peakWorkingSetMiB": 224.4
+      },
+      "server-1": {
+        "samples": 21,
+        "meanCpuPct": 18.66,
+        "peakCpuPct": 64.98,
+        "peakWorkingSetMiB": 103.1
+      },
+      "server-2": {
+        "samples": 21,
+        "meanCpuPct": 16.66,
+        "peakCpuPct": 70.57,
+        "peakWorkingSetMiB": 103.8
+      }
+    },
+    "logRelationBytesBefore": 73728,
+    "logRelationBytesAfter": 160210944
+  },
+  "driverExitCode": 0
+}

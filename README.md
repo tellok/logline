@@ -40,6 +40,26 @@ configureLogline({
 });
 ```
 
+## Upload to your own server
+
+Install `logserver-reporter@beta` alongside the matching `logline@beta` release. The reporter is optional: importing Logline alone sends nothing. Configure one instance per destination, using its deployment URL and immutable project ID. This example runs in a trusted application process:
+
+```ts
+import { configureLogline } from 'logline';
+import { createLoglineServerReporter } from 'logserver-reporter';
+
+const reporter = createLoglineServerReporter({
+  baseUrl: 'https://telemetry.example.org/logline',
+  projectId: process.env.LOGLINE_PROJECT_ID!,
+  service: 'checkout',
+  token: () => process.env.LOGLINE_WRITE_TOKEN!,
+  reporting: { sampleRate: 0.1, levelSampleRates: { ERROR: 1 } },
+});
+configureLogline({ plugins: [reporter] });
+```
+
+Use a dedicated write-only service identity, never an administrator token. Do not put a private PAT in a distributed browser bundle; send through an authenticated same-origin application gateway instead. There is no implicit hosted endpoint, durable client queue, or upload of IndexedDB history. See the [reporting contract](./docs/reporting.md), [ingestion API](./docs/server-ingestion.md), [administration](./docs/server-admin.md), [Logs Explorer](./docs/server-explorer.md), [MCP tools](./docs/server-mcp.md), and [deployment and performance guide](./docs/server-operations.md).
+
 ## Vite integration
 
 ```ts
@@ -112,7 +132,7 @@ Declare the experimental Logline version in both `peerDependencies` and `devDepe
 
 ## Development and releases
 
-The pnpm workspace keeps the publishable library in `packages/logline` and reserves `apps/*` for future applications. Nx caches builds and checks. See the bilingual [workspace guide](./docs/workspace.md) for toolchain selection, commands, caching, and packaging.
+The pnpm workspace contains the core `logline` library, the public `logserver-reporter` uploader, and the self-hosted `logline-server`. Nx caches builds and checks. See the bilingual [workspace guide](./docs/workspace.md) for toolchain selection, commands, caching, and packaging.
 
 ```sh
 pnpm install

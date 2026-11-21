@@ -20,7 +20,7 @@ const folder = realpathSync(mkdtempSync(join(tmpdir(), 'logline-vite-compatibili
 const run = (program, args, cwd) => execFileSync(program, args, { cwd, stdio: 'inherit' });
 try {
   preparePackage(root);
-  execFileSync('pnpm', ['pack', '--pack-destination', folder], {
+  execFileSync('pnpm', ['--config.ignore-scripts=true', 'pack', '--pack-destination', folder], {
     cwd: join(root, 'packages/logline'),
     stdio: ['ignore', 'pipe', 'inherit'],
     env: { ...process.env, npm_config_ignore_scripts: 'true' },

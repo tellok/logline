@@ -4,10 +4,20 @@ import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { api, assertBeta, command, newestV1, project, readJson, releaseChapter, root } from './release-contract.mjs';
+import {
+  api,
+  assertBeta,
+  command,
+  newestV1,
+  pairedVersion,
+  project,
+  readJson,
+  releaseChapter,
+  root,
+} from './release-contract.mjs';
 
 const pkg = readJson('packages/logline/package.json');
-assertBeta(pkg);
+assert.equal(pkg.version, pairedVersion());
 const sourceSha = command('git', ['rev-parse', 'HEAD']).trim();
 assert.equal(process.env.RELEASE_VERIFIED_SHA, sourceSha, 'Release source was not verified');
 assert.equal(process.env.GITHUB_ACTIONS, 'true', 'Publish using the trusted GitHub release workflow');
@@ -23,37 +33,51 @@ const assertLatest = () => {
   return tags;
 };
 assertLatest();
-const packed = JSON.parse(
-  command('npm', ['pack', '--ignore-scripts', '--json', '--pack-destination', folder], join(root, 'packages/logline')),
-);
-assert.equal(packed.length, 1);
-const tarball = join(folder, packed[0].filename);
-const bytes = readFileSync(tarball);
-const integrity = `sha512-${createHash('sha512').update(bytes).digest('base64')}`;
-const remote = spawnSync('npm', ['view', `${pkg.name}@${pkg.version}`, 'dist.integrity', '--json', registry], {
-  cwd: root,
-  encoding: 'utf8',
-});
-if (remote.status === 0)
-  assert.equal(JSON.parse(remote.stdout), integrity, 'An existing npm version has different content');
-else {
-  assert.match(remote.stderr, /E404/, 'Registry failure is not proof that a version is unpublished');
-  command('npm', [
-    'publish',
-    tarball,
-    '--ignore-scripts',
-    '--tag',
-    'beta',
-    '--access',
-    'public',
-    '--provenance',
-    registry,
-  ]);
+// pnpm pack resolves workspace:* peers to the exact version of the delivered core.
+// Package verified outputs without lifecycle hooks; recovery must reproduce the same bytes.
+function deliver(manifest) {
+  assertBeta(manifest);
+  assert.equal(manifest.version, pkg.version, 'Public beta packages must have matching versions');
+  const tarball = join(folder, `${manifest.name}-${manifest.version}.tgz`);
+  command('pnpm', ['--config.ignore-scripts=true', 'pack', '--out', tarball], join(root, 'packages', manifest.name));
+  const bytes = readFileSync(tarball);
+  const integrity = `sha512-${createHash('sha512').update(bytes).digest('base64')}`;
+  const remote = spawnSync(
+    'npm',
+    ['view', `${manifest.name}@${manifest.version}`, 'dist.integrity', '--json', registry],
+    {
+      cwd: root,
+      encoding: 'utf8',
+    },
+  );
+  if (remote.status === 0)
+    assert.equal(JSON.parse(remote.stdout), integrity, 'An existing npm version has different content');
+  else {
+    assert.match(remote.stderr, /E404/, 'Registry failure is not proof that a version is unpublished');
+    command('npm', [
+      'publish',
+      tarball,
+      '--ignore-scripts',
+      '--tag',
+      'beta',
+      '--access',
+      'public',
+      '--provenance',
+      registry,
+    ]);
+  }
+  assert.equal(
+    JSON.parse(command('npm', ['view', `${manifest.name}@${manifest.version}`, 'dist.integrity', '--json', registry])),
+    integrity,
+  );
+  assert.equal(
+    JSON.parse(command('npm', ['view', manifest.name, 'dist-tags', '--json', registry])).beta,
+    manifest.version,
+  );
+  return { tarball, integrity, sha256: createHash('sha256').update(bytes).digest('hex') };
 }
-assert.equal(
-  JSON.parse(command('npm', ['view', `${pkg.name}@${pkg.version}`, 'dist.integrity', '--json', registry])),
-  integrity,
-);
+const { tarball, integrity, sha256 } = deliver(pkg);
+const reporter = deliver(readJson('packages/logserver-reporter/package.json'));
 assert.equal(assertLatest().beta, pkg.version, 'beta dist-tag does not identify the delivered version');
 const manifest = {
   package: pkg.name,
@@ -61,14 +85,26 @@ const manifest = {
   sourceSha,
   channel: 'beta',
   integrity,
-  sha256: createHash('sha256').update(bytes).digest('hex'),
+  sha256,
+  reporter: {
+    package: 'logserver-reporter',
+    version: pkg.version,
+    integrity: reporter.integrity,
+    sha256: reporter.sha256,
+  },
 };
 const manifestFile = join(folder, 'release-manifest.json');
 writeFileSync(manifestFile, `${JSON.stringify(manifest, undefined, 2)}\n`);
 const notesFile = join(folder, 'release-notes.md');
 writeFileSync(
   notesFile,
-  `${releaseChapter(readFileSync(join(root, 'packages/logline/CHANGELOG.md'), 'utf8'), pkg.version)}\n\n### Simplified Chinese\n\n${releaseChapter(readFileSync(join(root, 'packages/logline/CHANGELOG.zh-CN.md'), 'utf8'), pkg.version)}\n`,
+  ['logline', 'logserver-reporter']
+    .map((name) => {
+      const chapter = (suffix) =>
+        releaseChapter(readFileSync(join(root, `packages/${name}/CHANGELOG${suffix}.md`), 'utf8'), pkg.version);
+      return `## ${name}\n\n${chapter('')}\n\n### Simplified Chinese\n\n${chapter('.zh-CN')}\n`;
+    })
+    .join('\n'),
 );
 const tag = `v${pkg.version}`;
 const refs = api(`repos/${repository}/git/matching-refs/tags/${tag}`);
@@ -92,11 +128,12 @@ if (!existing)
     '--notes-file',
     notesFile,
     tarball,
+    reporter.tarball,
     manifestFile,
   ]);
 else {
   assert.ok(existing.prerelease && !existing.draft);
-  for (const file of [tarball, manifestFile]) {
+  for (const file of [tarball, reporter.tarball, manifestFile]) {
     assert.ok(existsSync(file));
     const name = file.split('/').at(-1);
     const asset = existing.assets.find((entry) => entry.name === name);
@@ -109,4 +146,6 @@ else {
     else command('gh', ['release', 'upload', tag, file, '--repo', repository]);
   }
 }
-process.stdout.write(`Published ${pkg.name}@${pkg.version} with beta; latest remains on the newest v1.\n`);
+process.stdout.write(
+  `Published ${pkg.name} and logserver-reporter at ${pkg.version} with beta; logline latest remains on the newest v1.\n`,
+);

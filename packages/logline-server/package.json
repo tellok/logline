@@ -1,0 +1,21 @@
+{
+  "name": "logline-server",
+  "version": "2.0.0-beta.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "node --test --test-reporter=tap test/*.test.mjs",
+    "lint": "eslint src test --max-warnings 0"
+  },
+  "nx": {
+    "targets": {
+      "test": {
+        "cache": false
+      }
+    }
+  },
+  "dependencies": {
+    "pg": "^8.16.3"
+  }
+}

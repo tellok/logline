@@ -1,0 +1,68 @@
+{
+  "name": "logserver-reporter",
+  "version": "2.0.0-beta.0",
+  "description": "Configurable HTTP reporter for a self-hosted Logline server.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tellok/logline.git",
+    "directory": "packages/logserver-reporter"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "beta"
+  },
+  "peerDependencies": {
+    "logline": "workspace:*"
+  },
+  "devDependencies": {
+    "logline": "workspace:*",
+    "esbuild": "^0.25.11",
+    "typescript": "5.8.2"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src test --max-warnings 0",
+    "test": "node --test --test-reporter=tap test/*.test.mjs",
+    "build": "tsc -p tsconfig.build.json && esbuild src/index.ts --format=esm --outfile=dist/index.js && esbuild src/index.ts --format=cjs --outfile=dist/index.cjs",
+    "prepack": "pnpm --dir ../.. exec nx run logserver-reporter:build",
+    "prepublishOnly": "node ../../scripts/check-prerelease.mjs"
+  },
+  "nx": {
+    "targets": {
+      "build": {
+        "dependsOn": [
+          "^build",
+          "type-check"
+        ],
+        "outputs": [
+          "{projectRoot}/dist"
+        ]
+      },
+      "test": {
+        "dependsOn": [
+          "build"
+        ],
+        "cache": false
+      }
+    }
+  }
+}

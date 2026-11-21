@@ -1,0 +1,138 @@
+{
+  "profile": {
+    "replicas": 1,
+    "projects": 24,
+    "seconds": 120,
+    "eventsPerSecond": 1000,
+    "batch": 50,
+    "writers": 6,
+    "readers": 3,
+    "hot": false,
+    "mcp": true,
+    "padding": 192
+  },
+  "wallSeconds": 120.04934483400001,
+  "generated": 119950,
+  "accepted": 119950,
+  "offeredBytes": 44019120,
+  "acceptedBytes": 44019120,
+  "eventsPerSec": 999.1724666707896,
+  "bytesPerSec": 366675.2206008961,
+  "statuses": {
+    "rows:200": 545,
+    "series:200": 546,
+    "upload:200": 2399,
+    "groups:200": 546,
+    "refresh:200": 545,
+    "export:200": 544,
+    "mcp:200": 544
+  },
+  "failures": {},
+  "retryAttempts": 0,
+  "deferred": 0,
+  "ackErrors": 0,
+  "maxClientInflightEvents": 300,
+  "firstAckAfterFailureMs": null,
+  "visibilityFailures": 0,
+  "latency": {
+    "queryAttemptMs": {
+      "n": 3270,
+      "p95": 25.05,
+      "p99": 61.99
+    },
+    "rowsMs": {
+      "n": 545,
+      "p95": 28.76,
+      "p99": 64.81
+    },
+    "seriesMs": {
+      "n": 546,
+      "p95": 18.9,
+      "p99": 50.46
+    },
+    "uploadAttemptMs": {
+      "n": 2399,
+      "p95": 66.88,
+      "p99": 143.28
+    },
+    "uploadAckMs": {
+      "n": 2399,
+      "p95": 66.91,
+      "p99": 143.34
+    },
+    "ackToVisibleMs": {
+      "n": 60,
+      "p95": 11.78,
+      "p99": 25.29
+    },
+    "groupsMs": {
+      "n": 546,
+      "p95": 23.17,
+      "p99": 52.77
+    },
+    "refreshMs": {
+      "n": 545,
+      "p95": 22.4,
+      "p99": 75.71
+    },
+    "exportMs": {
+      "n": 544,
+      "p95": 25.75,
+      "p99": 57.56
+    },
+    "mcpMs": {
+      "n": 544,
+      "p95": 25.62,
+      "p99": 61.99
+    }
+  },
+  "replayOk": true,
+  "counts": [
+    5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000,
+    5000, 5000, 5000, 5000, 4950
+  ],
+  "acks": [
+    5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000,
+    5000, 5000, 5000, 5000, 4950
+  ],
+  "offered": [
+    5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000,
+    5000, 5000, 5000, 5000, 4950
+  ],
+  "revokedStatus": [401],
+  "environment": {
+    "dockerVM": {
+      "cpus": 10,
+      "memoryBytes": 12528967680,
+      "arch": "aarch64",
+      "engine": "29.0.1"
+    },
+    "postgres": "17.12 (Debian 17.12-1.pgdg12+1)",
+    "nodeImageVersion": "v24.22.1"
+  },
+  "resources": {
+    "samples": {
+      "db-1": {
+        "samples": 21,
+        "meanCpuPct": 27.3,
+        "peakCpuPct": 100.98,
+        "peakWorkingSetMiB": 248.9
+      },
+      "server-1": {
+        "samples": 21,
+        "meanCpuPct": 12.36,
+        "peakCpuPct": 29.68,
+        "peakWorkingSetMiB": 185.9
+      },
+      "server-2": {
+        "samples": 21,
+        "meanCpuPct": 2.11,
+        "peakCpuPct": 16.2,
+        "peakWorkingSetMiB": 63.5
+      }
+    },
+    "logRelationBytesBefore": 328245248,
+    "logRelationBytesAfter": 498327552
+  },
+  "driverExitCode": 0
+}

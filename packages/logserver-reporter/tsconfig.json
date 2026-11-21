@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "paths": { "logline/plugin/reporting": ["../logline/src/plugins/reporting/index.ts"] }
+  },
+  "include": ["src"]
+}

@@ -89,6 +89,10 @@ AutoImport({ ...createLoglineAutoImport() });
 
 `loglineAutoImportResolvers` is also exported.
 
+## Optional asynchronous reporting
+
+For a self-hosted destination, install the matching `logserver-reporter@beta`, then register `createLoglineServerReporter({baseUrl, projectId, service, token, reporting})` in `configureLogline({ plugins: [...] })`. Use the deployment root (including a proxy prefix), not the ingestion endpoint or a project slug. `token` may be a function for rotation. Keep PATs server-side; use a trusted gateway for public clients. Make one instance for each project/destination. For another backend implement `ReportingTransport` from `logline/plugin/reporting`. Let the queue own retry, timeout, sampling, and lifecycle; it cannot recover globally filtered calls, startup records or stored history. Flush before graceful shutdown and dispose the instance when permanently removed. See the [reporting guide](https://tellok.github.io/logline/docs/reporting).
+
 ## IndexedDB persistence
 
 Persistence is optional. Final Vite applications can enable `indexedDB: true` or supply an options object. Initialization joins the application entry module graph and preserves sourcemap composition.
@@ -143,9 +147,11 @@ For a deliberate read-only observer mode, HTML Interop may run without IndexedDB
 | `logline/html-interop`     | Explicit startup capture               |
 | `logline/plugin/indexeddb` | Persistence and queries                |
 | `logline/plugin/click-log` | Click/touch logging                    |
+| `logline/plugin/reporting` | Optional bounded reporting scheduler   |
+| `logserver-reporter`       | Configurable self-hosted HTTP uploader |
 
 Read the bundled README and docs for complete options and migration details.
 
 ## Repository development
 
-The pnpm workspace stores this library in `packages/logline`; `apps/*` is reserved for future applications, including the unimplemented logline-server. Use root Nx commands for build, type-check, lint, and test. Node.js 24.22.1 LTS and pnpm 11.25.0 are selected automatically with advisory version checks. Run `pnpm run pack:logline` to stage maintained root documentation and this Skill into the library before packaging. Edit root documentation sources, never generated package copies. See the distributed `docs/workspace.md` and `docs/workspace.zh-CN.md` for caching and release boundaries.
+The pnpm workspace separates `packages/logline` (logger and generic reporting scheduler), `packages/logserver-reporter` (public HTTP transport), and `packages/logline-server` (deployable service). For managed access, log investigation and querying, see the server Skill and `docs/server-explorer.md`. Use root Nx commands for build, type-check, lint, and test. Node.js 24.22.1 LTS and pnpm 11.25.0 are selected automatically with advisory version checks. Run `pnpm run pack:logline` to stage maintained root documentation and this Skill into the library before packaging. Edit root documentation sources, never generated package copies. See the distributed `docs/workspace.md` and `docs/workspace.zh-CN.md` for caching and release boundaries.
