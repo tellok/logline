@@ -17,15 +17,14 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
       - id: pending
         run: node scripts/release-contract.mjs
       - if: steps.pending.outputs.pending == 'true'
         uses: pnpm/action-setup@v6
-      - if: steps.pending.outputs.pending == 'true'
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: .node-version
-          cache: pnpm
       - if: steps.pending.outputs.pending == 'true'
         run: pnpm install --frozen-lockfile
       - if: steps.pending.outputs.pending == 'true'
