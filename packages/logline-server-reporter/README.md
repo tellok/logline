@@ -2,11 +2,11 @@
 
 English | [简体中文](./README.zh-CN.md)
 
-`logserver-reporter` uploads sanitized events from `logline/plugin/reporting` to your own Logline deployment. Install it with the matching `logline@beta` version. There are no server dependencies or vendor SDKs in the uploader.
+`logline-server-reporter` uploads sanitized events from `logline/plugin/reporting` to your own Logline deployment. Install it with the matching `logline@beta` version. There are no server dependencies or vendor SDKs in the uploader.
 
 ```ts
 import { configureLogline } from 'logline';
-import { createLoglineServerReporter } from 'logserver-reporter';
+import { createLoglineServerReporter } from 'logline-server-reporter';
 
 const reporter = createLoglineServerReporter({
   dsn: process.env.LOGLINE_DSN!,

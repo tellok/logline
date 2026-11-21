@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import test from 'node:test';
 import { configureLogline, ERROR, resetLoglineConfig } from 'logline';
-import { createLoglineServerReporter } from 'logserver-reporter';
+import { createLoglineServerReporter } from 'logline-server-reporter';
 
 // A consumer of the built packages, not a test of an injected mock transport.
 test(

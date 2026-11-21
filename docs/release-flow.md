@@ -2,7 +2,7 @@
 
 English | [简体中文](./release-flow.zh-CN.md)
 
-The default branch is discovered from GitHub (currently master). The previous default-branch snapshot is preserved as v1. Changesets CLI 2.29.7 versions the public `logline` and `logserver-reporter` npm packages as one fixed group. The private `logline-server` is distributed as a container image, not an npm package. The first release is 2.0.0-beta.0; subsequent changes remain in beta prerelease mode until a separate stable-v2 decision.
+The default branch is discovered from GitHub (currently master). The previous default-branch snapshot is preserved as v1. Changesets CLI 2.29.7 versions the public `logline` and `logline-server-reporter` npm packages as one fixed group. The private `logline-server` is distributed as a container image, not an npm package. The first release is 2.0.0-beta.0; subsequent changes remain in beta prerelease mode until a separate stable-v2 decision.
 
 ## Events and version decisions
 
@@ -53,7 +53,7 @@ Configure npm trusted publishing for **each** package with tellok/logline, relea
 
 ## Beta and v1 installation
 
-Publishing always passes --tag beta. For `logline`, before and after publication, `latest` must equal the greatest published stable v1 minor/patch version, not a fixed 1.0.0. The flow never writes latest; stable-v1 maintenance owns that channel. Install logline@beta for v2, logline@1 to constrain the major line, or logline for the latest stable v1. Install `logserver-reporter@beta` for the matching self-hosted uploader.
+Publishing always passes --tag beta. For `logline`, before and after publication, `latest` must equal the greatest published stable v1 minor/patch version, not a fixed 1.0.0. The flow never writes latest; stable-v1 maintenance owns that channel. Install logline@beta for v2, logline@1 to constrain the major line, or logline for the latest stable v1. Install `logline-server-reporter@beta` for the matching self-hosted uploader.
 
 ## Concurrency and recovery
 
@@ -77,4 +77,4 @@ A single Pages artifact is required by the deploy-pages consumer. The job delete
 
 For local work, use pnpm docs:dev, pnpm docs:build, and pnpm docs:preview. README and Markdown guides remain the source of truth; generated staging and output are ignored and excluded from npm packaging.
 
-The private workspace root owns tooling; publishable manifests and bilingual changelogs live under `packages/logline` and `packages/logserver-reporter`. Version preparation updates only release metadata. Each Changeset lists one target per line; Chinese summaries under `translations.json` appear in the targeted packages’ changelogs. A package advanced solely for lockstep receives a synchronization note. Package verification stages public documentation from root sources before delivery. See the [workspace guide](./workspace.md).
+The private workspace root owns tooling; publishable manifests and bilingual changelogs live under `packages/logline` and `packages/logline-server-reporter`. Version preparation updates only release metadata. Each Changeset lists one target per line; Chinese summaries under `translations.json` appear in the targeted packages’ changelogs. A package advanced solely for lockstep receives a synchronization note. Package verification stages public documentation from root sources before delivery. See the [workspace guide](./workspace.md).

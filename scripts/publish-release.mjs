@@ -77,7 +77,7 @@ function deliver(manifest) {
   return { tarball, integrity, sha256: createHash('sha256').update(bytes).digest('hex') };
 }
 const { tarball, integrity, sha256 } = deliver(pkg);
-const reporter = deliver(readJson('packages/logserver-reporter/package.json'));
+const reporter = deliver(readJson('packages/logline-server-reporter/package.json'));
 assert.equal(assertLatest().beta, pkg.version, 'beta dist-tag does not identify the delivered version');
 const manifest = {
   package: pkg.name,
@@ -87,7 +87,7 @@ const manifest = {
   integrity,
   sha256,
   reporter: {
-    package: 'logserver-reporter',
+    package: 'logline-server-reporter',
     version: pkg.version,
     integrity: reporter.integrity,
     sha256: reporter.sha256,
@@ -98,7 +98,7 @@ writeFileSync(manifestFile, `${JSON.stringify(manifest, undefined, 2)}\n`);
 const notesFile = join(folder, 'release-notes.md');
 writeFileSync(
   notesFile,
-  ['logline', 'logserver-reporter']
+  ['logline', 'logline-server-reporter']
     .map((name) => {
       const chapter = (suffix) =>
         releaseChapter(readFileSync(join(root, `packages/${name}/CHANGELOG${suffix}.md`), 'utf8'), pkg.version);
@@ -147,5 +147,5 @@ else {
   }
 }
 process.stdout.write(
-  `Published ${pkg.name} and logserver-reporter at ${pkg.version} with beta; logline latest remains on the newest v1.\n`,
+  `Published ${pkg.name} and logline-server-reporter at ${pkg.version} with beta; logline latest remains on the newest v1.\n`,
 );

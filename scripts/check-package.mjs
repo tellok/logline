@@ -31,7 +31,7 @@ const runtime = await import(new URL('dist/index.js', root).href);
 assert.equal(runtime.LOGLINE_MODULE_ID, 'logline');
 assert.equal(typeof runtime.configureLogline, 'function');
 if (process.argv.includes('--reporter')) {
-  const uploader = new URL('../packages/logserver-reporter/', import.meta.url);
+  const uploader = new URL('../packages/logline-server-reporter/', import.meta.url);
   const manifest = JSON.parse(readFileSync(new URL('package.json', uploader), 'utf8'));
   const entry = manifest.exports['.'];
   for (const file of Object.values(entry)) assert.ok(existsSync(new URL(file, uploader)), file);

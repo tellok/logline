@@ -18,11 +18,11 @@ pnpm add logline@beta
 
 ## 上传到自托管服务
 
-同时安装同一 beta 版本的 `logline@beta` 和 `logserver-reporter@beta`。仅导入 Logline 不会发送网络请求。每个目的地单独创建 reporter，只需配置该项目的 DSN。以下示例运行在可信应用进程内：
+同时安装同一 beta 版本的 `logline@beta` 和 `logline-server-reporter@beta`。仅导入 Logline 不会发送网络请求。每个目的地单独创建 reporter，只需配置该项目的 DSN。以下示例运行在可信应用进程内：
 
 ```ts
 import { configureLogline } from 'logline';
-import { createLoglineServerReporter } from 'logserver-reporter';
+import { createLoglineServerReporter } from 'logline-server-reporter';
 
 const reporter = createLoglineServerReporter({
   dsn: process.env.LOGLINE_DSN!,
@@ -300,7 +300,7 @@ export default defineConfig({
 
 ## Workspace 开发
 
-仓库采用 pnpm workspace 与 Nx，包含 `logline` 核心库、独立发布的 `logserver-reporter` 上传包和可自行部署的 `logline-server`。固定 Node.js 24.22.1 LTS 与 pnpm 11.25.0，支持自动切换，禁用严格版本校验。命令、缓存和打包说明见 [Workspace 开发指南](./docs/workspace.zh-CN.md)。
+仓库采用 pnpm workspace 与 Nx，包含 `logline` 核心库、独立发布的 `logline-server-reporter` 上传包和可自行部署的 `logline-server`。固定 Node.js 24.22.1 LTS 与 pnpm 11.25.0，支持自动切换，禁用严格版本校验。命令、缓存和打包说明见 [Workspace 开发指南](./docs/workspace.zh-CN.md)。
 
 ## 发布流程
 

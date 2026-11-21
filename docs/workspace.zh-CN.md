@@ -2,7 +2,7 @@
 
 [English](./workspace.md) | 简体中文
 
-workspace 包含两个公开 beta 包：`packages/logline`（日志库和可选上报调度器）、`packages/logserver-reporter`（HTTP 上传包）。`packages/logline-server` 为基于 PostgreSQL 的私有服务包，部署步骤见[运维指南](./server-operations.zh-CN.md)。
+workspace 包含两个公开 beta 包：`packages/logline`（日志库和可选上报调度器）、`packages/logline-server-reporter`（HTTP 上传包）。`packages/logline-server` 为基于 PostgreSQL 的私有服务包，部署步骤见[运维指南](./server-operations.zh-CN.md)。
 
 ## 工具链
 

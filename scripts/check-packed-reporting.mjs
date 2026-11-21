@@ -17,7 +17,7 @@ const run = (program, args, cwd) => execFileSync(program, args, { cwd, env, stdi
 
 try {
   const modules = join(stage, 'node_modules');
-  for (const name of ['logline', 'logserver-reporter']) {
+  for (const name of ['logline', 'logline-server-reporter']) {
     const project = join(root, 'packages', name);
     const archive = join(stage, `${name}.tgz`);
     const installed = join(modules, name);
@@ -33,7 +33,7 @@ try {
   }
 
   const core = json(join(modules, 'logline/package.json'));
-  const reporter = json(join(modules, 'logserver-reporter/package.json'));
+  const reporter = json(join(modules, 'logline-server-reporter/package.json'));
   assert.equal(reporter.peerDependencies.logline, core.version, 'Packed reporter must pin the released core version');
   for (const doc of ['reporting.md', 'reporting.zh-CN.md']) {
     assert.deepEqual(
@@ -43,7 +43,7 @@ try {
     );
   }
 
-  const specifiers = ['logline', 'logline/plugin/reporting', 'logserver-reporter'];
+  const specifiers = ['logline', 'logline/plugin/reporting', 'logline-server-reporter'];
   const bindings = [
     'configureLogline',
     'createReportingLoggingPlugin',
@@ -85,7 +85,7 @@ for (const plugin of [custom, reporter]) {
     `
 import { configureLogline } from 'logline';
 import { createReportingLoggingPlugin, type ReportingTransport } from 'logline/plugin/reporting';
-import { createLoglineServerReporter, createLoglineServerTransport, type LoglineServerOptions } from 'logserver-reporter';
+import { createLoglineServerReporter, createLoglineServerTransport, type LoglineServerOptions } from 'logline-server-reporter';
 const options: LoglineServerOptions = { dsn: 'https://llpk_' + 's'.repeat(43) + '@example.invalid/00000000-0000-4000-8000-000000000001' };
 const transport: ReportingTransport = createLoglineServerTransport(options);
 const custom = createReportingLoggingPlugin({ transport, transform: event => ({ ...event, message: event.message.toUpperCase() }) });
@@ -115,7 +115,7 @@ reporter.flush({ timeout: 'invalid' });
   );
   run(process.execPath, [require.resolve('typescript/bin/tsc'), '--project', join(stage, 'tsconfig.json')], stage);
   console.log(
-    `Verified packed logline ${core.version} + logserver-reporter ${reporter.version}: released peer, docs, ESM, CJS and strict bundler TypeScript.`,
+    `Verified packed logline ${core.version} + logline-server-reporter ${reporter.version}: released peer, docs, ESM, CJS and strict bundler TypeScript.`,
   );
 } finally {
   assert.equal(dirname(stage), resolve(tmpdir()));

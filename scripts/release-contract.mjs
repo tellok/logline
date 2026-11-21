@@ -9,7 +9,7 @@ const require = createRequire(import.meta.url);
 
 export const VERSION_BRANCH = 'codex/version-packages';
 export const VERSION_MARKER = '<!-- logline-version-pr -->';
-export const PUBLIC_PACKAGES = ['logline', 'logserver-reporter'];
+export const PUBLIC_PACKAGES = ['logline', 'logline-server-reporter'];
 export const VERSION_FILES = [
   ...PUBLIC_PACKAGES.flatMap((name) =>
     ['package.json', 'CHANGELOG.md', 'CHANGELOG.zh-CN.md'].map((file) => `packages/${name}/${file}`),

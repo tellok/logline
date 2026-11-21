@@ -2,7 +2,7 @@
 
 English | [简体中文](./workspace.zh-CN.md)
 
-The workspace has two public beta packages: `packages/logline` (logger and optional reporting scheduler) and `packages/logserver-reporter` (HTTP uploader). `packages/logline-server` is the private PostgreSQL-backed service; see [self-hosting](./server-operations.md).
+The workspace has two public beta packages: `packages/logline` (logger and optional reporting scheduler) and `packages/logline-server-reporter` (HTTP uploader). `packages/logline-server` is the private PostgreSQL-backed service; see [self-hosting](./server-operations.md).
 
 ## Toolchain
 

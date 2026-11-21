@@ -2,11 +2,11 @@
 
 [English](./README.md) | 简体中文
 
-`logserver-reporter` 将 `logline/plugin/reporting` 已脱敏的事件上传至指定的 Logline 部署。与同一 beta 版本的 `logline` 一起安装；不依赖服务端代码或第三方平台 SDK。
+`logline-server-reporter` 将 `logline/plugin/reporting` 已脱敏的事件上传至指定的 Logline 部署。与同一 beta 版本的 `logline` 一起安装；不依赖服务端代码或第三方平台 SDK。
 
 ```ts
 import { configureLogline } from 'logline';
-import { createLoglineServerReporter } from 'logserver-reporter';
+import { createLoglineServerReporter } from 'logline-server-reporter';
 
 const reporter = createLoglineServerReporter({
   dsn: process.env.LOGLINE_DSN!,

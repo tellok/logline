@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createRequire } from 'node:module';
-import { createLoglineServerReporter, createLoglineServerTransport } from 'logserver-reporter';
+import { createLoglineServerReporter, createLoglineServerTransport } from 'logline-server-reporter';
 
 const key = `llpk_${'a'.repeat(40)}A-_`;
 const projectId = '00000000-0000-4000-8000-000000000001';
@@ -15,7 +15,7 @@ const ctx = { signal: new AbortController().signal };
 const partial = { acceptedEventIds: ['a'], retryableEventIds: ['b'], rejectedEventIds: [], retryAfterMs: 1500 };
 
 test('publishes the same factories for ESM and CommonJS without sending on construction', () => {
-  const cjs = createRequire(import.meta.url)('logserver-reporter');
+  const cjs = createRequire(import.meta.url)('logline-server-reporter');
   assert.equal(typeof cjs.createLoglineServerReporter, 'function');
   const reporter = createLoglineServerReporter({ ...options, fetch: () => assert.fail('Unexpected fetch') });
   reporter.dispose();

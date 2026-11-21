@@ -40,7 +40,7 @@ test('workspace preparation synchronizes both beta packages and bilingual chapte
   const folder = mkdtempSync(join(tmpdir(), 'logline-workspace-version-'));
   const writeJson = (path, value) => writeFileSync(join(folder, path), JSON.stringify(value));
   try {
-    const packages = ['logline', 'logserver-reporter'];
+    const packages = ['logline', 'logline-server-reporter'];
     for (const path of ['.changeset', '.release', ...packages.map((name) => `packages/${name}`)])
       mkdirSync(join(folder, path), { recursive: true });
     writeJson('package.json', {

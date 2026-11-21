@@ -42,11 +42,11 @@ configureLogline({
 
 ## Upload to your own server
 
-Install `logserver-reporter@beta` alongside the matching `logline@beta` release. The reporter is optional: importing Logline alone sends nothing. Configure one reporter per destination using a project DSN. This example runs in a trusted application process:
+Install `logline-server-reporter@beta` alongside the matching `logline@beta` release. The reporter is optional: importing Logline alone sends nothing. Configure one reporter per destination using a project DSN. This example runs in a trusted application process:
 
 ```ts
 import { configureLogline } from 'logline';
-import { createLoglineServerReporter } from 'logserver-reporter';
+import { createLoglineServerReporter } from 'logline-server-reporter';
 
 const reporter = createLoglineServerReporter({
   dsn: process.env.LOGLINE_DSN!,
@@ -129,7 +129,7 @@ Declare the experimental Logline version in both `peerDependencies` and `devDepe
 
 ## Development and releases
 
-The pnpm workspace contains the core `logline` library, the public `logserver-reporter` uploader, and the self-hosted `logline-server`. Nx caches builds and checks. See the bilingual [workspace guide](./docs/workspace.md) for toolchain selection, commands, caching, and packaging.
+The pnpm workspace contains the core `logline` library, the public `logline-server-reporter` uploader, and the self-hosted `logline-server`. Nx caches builds and checks. See the bilingual [workspace guide](./docs/workspace.md) for toolchain selection, commands, caching, and packaging.
 
 ```sh
 pnpm install

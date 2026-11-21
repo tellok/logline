@@ -1,5 +1,5 @@
 {
-  "name": "logserver-reporter",
+  "name": "logline-server-reporter",
   "version": "2.0.0-beta.0",
   "description": "Configurable HTTP reporter for a self-hosted Logline server.",
   "type": "module",
@@ -24,7 +24,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/tellok/logline.git",
-    "directory": "packages/logserver-reporter"
+    "directory": "packages/logline-server-reporter"
   },
   "publishConfig": {
     "access": "public",
@@ -43,7 +43,7 @@
     "lint": "eslint src test --max-warnings 0",
     "test": "node --test --test-reporter=tap test/*.test.mjs",
     "build": "tsc -p tsconfig.build.json && esbuild src/index.ts --format=esm --outfile=dist/index.js && esbuild src/index.ts --format=cjs --outfile=dist/index.cjs",
-    "prepack": "pnpm --dir ../.. exec nx run logserver-reporter:build",
+    "prepack": "pnpm --dir ../.. exec nx run logline-server-reporter:build",
     "prepublishOnly": "node ../../scripts/check-prerelease.mjs"
   },
   "nx": {

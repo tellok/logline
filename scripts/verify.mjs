@@ -36,7 +36,7 @@ try {
     'Set TEST_DATABASE_URL to a disposable PostgreSQL database for verification',
   );
   const server = checkTap('Server', ['--filter', 'logline-server', 'test']);
-  const reporter = checkTap('Reporter', ['--filter', 'logserver-reporter', 'test']);
+  const reporter = checkTap('Reporter', ['--filter', 'logline-server-reporter', 'test']);
   run(process.execPath, ['scripts/prepare-package.mjs']);
   run(process.execPath, ['scripts/check-package.mjs', '--reporter']);
   run(process.execPath, ['scripts/check-packed-reporting.mjs']);
