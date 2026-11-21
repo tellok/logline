@@ -42,7 +42,7 @@ function tool(action, description, properties, required) {
 
 const tools = [
   tool('projects', 'List currently readable projects (projectId, slug, displayName).', page),
-  tool('selectors', 'Discover observed services and environments for a scoped time range.', { query, ...page }),
+  tool('selectors', 'Discover observed project and environment pairs for a scoped time range.', { query, ...page }),
   tool('fields', 'Discover field paths and types before filtering, grouping or projecting.', { query, ...page }),
   tool(
     'rows',

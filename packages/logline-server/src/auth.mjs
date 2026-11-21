@@ -20,11 +20,25 @@ export function requireAdmin(token, adminToken) {
   if (
     typeof adminToken !== 'string' ||
     Buffer.byteLength(adminToken) < 32 ||
-    adminToken.startsWith('llpat_') ||
+    /^(?:llpat|llpk)_/.test(adminToken) ||
     !token ||
     !timingSafeEqual(digest(token), digest(adminToken))
   )
     throw unauthenticated();
+}
+
+export const validProjectKey = (token) => typeof token === 'string' && /^llpk_[A-Za-z0-9_-]{43}$/.test(token);
+
+/** Check an ingest credential against the primary without consulting membership or accepting PATs. */
+export async function authorizeUpload(db, token, projectId) {
+  if (!validProjectKey(token)) throw unauthenticated();
+  const { rows } = await db.query(
+    'SELECT project_id,key_id FROM project_keys WHERE secret_digest=$1 AND revoked_at IS NULL',
+    [digest(token)],
+  );
+  if (!rows.length) throw unauthenticated();
+  if (rows[0].project_id !== projectId) throw httpError(403, 'forbidden', 'Operation not permitted');
+  return rows[0].key_id;
 }
 
 /** Authenticate a PAT and resolve current, operation-scoped projects from the primary in one snapshot.
@@ -33,7 +47,7 @@ export function requireAdmin(token, adminToken) {
  */
 export async function authorize(db, token, scope, projectIds) {
   if (typeof token !== 'string' || !/^llpat_[A-Za-z0-9_-]{43}$/.test(token)) throw unauthenticated();
-  if (!['logs:read', 'logs:write'].includes(scope)) throw new Error('Invalid authorization scope');
+  if (scope !== 'logs:read') throw new Error('Invalid authorization scope');
   if (projectIds !== undefined && (!Array.isArray(projectIds) || !projectIds.every(validId)))
     throw httpError(400, 'invalid_project_id', 'Expected project UUIDs');
   const ids = projectIds === undefined ? null : [...new Set(projectIds.map((id) => id.toLowerCase()))];

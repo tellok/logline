@@ -4,7 +4,7 @@ const DAY = 86_400_000;
 export const fieldTypes = Object.freeze({
   projectId: 'string',
   eventId: 'string',
-  service: 'string',
+  ingestKeyId: 'string',
   level: 'string',
   timestamp: 'number',
   message: 'string',
@@ -17,7 +17,7 @@ export const fieldTypes = Object.freeze({
 const columns = {
   projectId: 'e.project_id::text',
   eventId: 'e.event_id',
-  service: 'e.service',
+  ingestKeyId: 'e.ingest_key_id::text',
   level: 'e.level',
   timestamp: 'e.timestamp_ms',
   message: 'e.message',

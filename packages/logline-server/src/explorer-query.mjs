@@ -80,7 +80,7 @@ export function columns(names) {
 }
 function projection(names, values) {
   if (!columns(names))
-    return `(e.event || jsonb_build_object('projectId',e.project_id,'eventId',e.event_id,'service',e.service,'timestamp',e.timestamp_ms,'message',e.message))`;
+    return `(e.event || jsonb_build_object('projectId',e.project_id,'eventId',e.event_id,'ingestKeyId',e.ingest_key_id,'timestamp',e.timestamp_ms,'message',e.message))`;
   return `jsonb_build_object(${names.map((n) => `${bind(values, n)}::text, ${fieldSql(n, values)}`).join(',')})`;
 }
 function scopeQuery(s, b, now = s.now) {
@@ -214,7 +214,7 @@ export async function metadata(s, b, fields) {
   const v = q.values;
   if (!fields) {
     const { rows: rs } = await s.db.query(
-      `SELECT DISTINCT e.project_id AS "projectId",e.service,e.context->>'environment' AS environment FROM log_events e WHERE ${q.where} ORDER BY 1,2,3 LIMIT ${bind(v, limit + 1)} OFFSET ${bind(v, offset)}`,
+      `SELECT DISTINCT e.project_id AS "projectId",e.context->>'environment' AS environment FROM log_events e WHERE ${q.where} ORDER BY 1,2 LIMIT ${bind(v, limit + 1)} OFFSET ${bind(v, offset)}`,
       v,
     );
     return { ...page(rs, offset, limit), range: frame(q) };

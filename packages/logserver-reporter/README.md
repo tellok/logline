@@ -9,15 +9,14 @@ import { configureLogline } from 'logline';
 import { createLoglineServerReporter } from 'logserver-reporter';
 
 const reporter = createLoglineServerReporter({
-  baseUrl: 'https://logs.example.org/telemetry',
-  projectId: process.env.LOGLINE_PROJECT_ID!,
-  service: 'checkout',
-  token: () => process.env.LOGLINE_WRITE_TOKEN!,
+  dsn: process.env.LOGLINE_DSN!,
   reporting: { maxBatchEvents: 50, requestTimeoutMs: 5000 },
 });
 configureLogline({ plugins: [reporter] });
 ```
 
-`baseUrl` must be HTTPS (loopback may use HTTP). The transport appends `/api/v1/logs`, preserving reverse-proxy path prefixes. `projectId` is the server-issued UUID, not a slug; `service` identifies the producer. `token` accepts a string or a per-attempt sync/async provider. Use a write-only service identity; never ship a private PAT to browsers. Use an authenticated application gateway for public clients. `fetch` optionally supplies a fetch-compatible implementation. No ambient cookies, URL credentials or HTTP redirects are used.
+Use a DSN of the form `https://<project-key>@host[/prefix]/<project-uuid>`. The project key is `llpk_` followed by 43 base64url characters; use an admin-issued project key, not a personal access token. HTTP is allowed only on loopback. Passwords, queries and fragments are rejected. The transport extracts the key, sends it only as `Authorization: Bearer`, and posts `{ projectId, events }` to `/api/v1/logs` under the proxy prefix. It does not forward URL credentials, send ambient cookies or follow redirects. Optionally supply a compatible `fetch` implementation.
+
+A project key can submit events, not read logs. A DSN used in a browser is visible to its users and does not prove an event is trustworthy. Do not log the DSN; keep backend keys in trusted configuration. To rotate, issue a new key, replace the reporter, then revoke the old key.
 
 Use `createLoglineServerTransport(options)` for the transport alone. `reporting` on the convenience factory accepts the core plugin options except `transport`. Its queue is bounded and in memory. Successful HTTP responses must partition IDs; on quota exhaustion a valid partial acknowledgement is preserved. Network errors, timeouts, HTTP 408/425/429 and 5xx responses may retry within the reporting limits. Other HTTP failures reject the batch. Keep `maxBatchEvents` and `maxBatchBytes` below server limits, allowing for the JSON envelope. The service does not retrieve historical IndexedDB logs. See the [reporting guide](https://github.com/tellok/logline/blob/master/docs/reporting.md) and [operations guide](https://github.com/tellok/logline/blob/master/docs/server-operations.md).

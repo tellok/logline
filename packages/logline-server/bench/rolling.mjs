@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { existsSync, writeFileSync, readFileSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
-const service = 'http://logline-server:4318';
+const clusterUrl = 'http://logline-server:4318';
 const endpoints = (s) =>
   s
     .trim()
@@ -36,13 +36,15 @@ const { projectId } = await manage(old[1], '/projects', {
   slug: 'rolling-' + run,
   displayName: 'Synthetic rollback check',
 });
-const { secret } = await manage(old[0], `/users/${userId}/tokens`, { scopes: ['logs:read', 'logs:write'] });
+const { secret } = await manage(old[0], `/users/${userId}/tokens`, { scopes: ['logs:read'] });
 const detail = (base, eventId) => call(base, '/api/v1/explorer/detail', secret, { projectId, eventId });
 assert.equal((await detail(old[1], 'marker')).status, 403);
 const grant = `/projects/${projectId}/members/${userId}`;
-await manage(old[0], grant, { permissions: ['logs:read', 'logs:write'] }, 'PUT');
+await manage(old[0], grant, { permissions: ['logs:read'] }, 'PUT');
+const keyPath = `/projects/${projectId}/keys`;
+const { key, keyId } = await manage(old[1], keyPath, { name: 'Synthetic rollout writer' });
 const events = new Map();
-const upload = (base, event) => call(base, '/api/v1/logs', secret, { projectId, service: 'verify', events: [event] });
+const upload = (base, event) => call(base, '/api/v1/logs', key, { projectId, events: [event] });
 const event = (id) => ({ id, timestamp: Date.now(), level: 'LOG', message: 'Synthetic rollout verification' });
 const marker = event('marker');
 assert.deepEqual((await upload(old[0], marker)).body.acceptedEventIds, ['marker']);
@@ -56,7 +58,7 @@ let attempts = 0;
 while (!existsSync('/tmp/rolling-new-pods')) {
   assert(Date.now() < deadline, 'Rollout did not finish');
   const e = event('rolling-' + attempts++),
-    [r, q] = await Promise.all([upload(service, e), detail(service, 'marker')]);
+    [r, q] = await Promise.all([upload(clusterUrl, e), detail(clusterUrl, 'marker')]);
   queries[q.status] = (queries[q.status] ?? 0) + 1;
   if (q.status === 200) assert.equal(q.body.item.eventId, 'marker');
   else assert([0, 502, 503, 504].includes(q.status));
@@ -74,6 +76,7 @@ let i = 0;
 for (const e of events.values()) {
   const r = await detail(fresh[i++ % 2], e.id);
   assert.equal(r.body?.item?.eventId, e.id, 'Acknowledged record lost');
+  assert.equal(r.body.item.ingestKeyId, keyId, 'Ingest credential attribution lost');
 }
 assert.deepEqual((await upload(fresh[0], marker)).body.acceptedEventIds, ['marker']);
 const grouped = await call(fresh[1], '/api/v1/explorer/groups', secret, { query: { projectIds: [projectId] } });
@@ -81,6 +84,11 @@ assert.equal(grouped.body.items[0].value, events.size, 'Duplicate or missing row
 await manage(fresh[0], grant, undefined, 'DELETE');
 const revoked = await Promise.all(fresh.map((ep) => detail(ep, 'marker').then((r) => r.status)));
 assert.deepEqual(revoked, [403, 403]);
+// Revoking a reader's grant cannot affect a project-owned writer.
+assert.deepEqual((await upload(fresh[1], marker)).body.acceptedEventIds, ['marker']);
+await manage(fresh[0], `${keyPath}/${keyId}`, undefined, 'DELETE');
+const revokedKey = await Promise.all(fresh.map((ep) => upload(ep, marker).then((r) => r.status)));
+assert.deepEqual(revokedKey, [401, 401]);
 console.log(
   JSON.stringify(
     {
@@ -89,6 +97,7 @@ console.log(
       verifiedRows: events.size,
       replayCount: grouped.body.items[0].value,
       revoked,
+      revokedKey,
     },
     null,
     2,

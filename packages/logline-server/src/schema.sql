@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS log_events (
   project_id uuid NOT NULL REFERENCES projects(project_id),
   event_id text NOT NULL,
-  service text NOT NULL,
+  ingest_key_id uuid REFERENCES project_keys(key_id),
   level text NOT NULL CHECK (level IN ('TRACE','DEBUG','LOG','WARN','ERROR')),
   timestamp_ms bigint NOT NULL,
   message text NOT NULL,

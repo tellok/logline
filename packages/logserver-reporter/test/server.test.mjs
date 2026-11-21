@@ -6,7 +6,7 @@ import { createLoglineServerReporter } from 'logserver-reporter';
 
 // A consumer of the built packages, not a test of an injected mock transport.
 test(
-  'reports a redacted log through the real server and enforces current read scope',
+  'reports via project DSN independently of members; PATs only read and revoked keys stop uploading',
   { skip: !process.env.TEST_DATABASE_URL },
   async () => {
     const { startServer } = await import('../../logline-server/src/server.mjs');
@@ -31,21 +31,20 @@ test(
           headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
           body: payload === undefined ? undefined : JSON.stringify(payload),
         });
-        assert.equal(res.status, expected, `${method} ${path}`);
+        assert.ok([expected].flat().includes(res.status), `${method} ${path}: unexpected HTTP ${res.status}`);
         return res.status === 204 ? undefined : res.json();
       }
       const admin = (path, method, payload, status) => api('admin/' + path, method, adminToken, payload, status);
       const { projectId } = await admin('projects', 'POST', { slug: 'sample', displayName: 'Sample' }, 201);
-      const { userId } = await admin('users', 'POST', { displayName: 'Test service identity' }, 201);
-      await admin(`projects/${projectId}/members/${userId}`, 'PUT', { permissions: ['logs:read', 'logs:write'] }, 204);
-      const issue = async (scope) => (await admin(`users/${userId}/tokens`, 'POST', { scopes: [scope] }, 201)).secret;
-      const writer = await issue('logs:write'),
-        reader = await issue('logs:read');
+      const { userId } = await admin('users', 'POST', { displayName: 'Test reader' }, 201);
+      await admin(`projects/${projectId}/members/${userId}`, 'PUT', { permissions: ['logs:read'] }, 204);
+      const { secret: reader } = await admin(`users/${userId}/tokens`, 'POST', { scopes: ['logs:read'] }, 201);
+      const { keyId, key } = await admin(`projects/${projectId}/keys`, 'POST', { name: 'checkout' }, 201);
+      const dsn = new URL(baseUrl);
+      dsn.username = key;
+      dsn.pathname = `/${projectId}`;
       reporter = createLoglineServerReporter({
-        baseUrl,
-        projectId,
-        service: 'example-service',
-        token: writer,
+        dsn: dsn.href,
         reporting: { context: { environment: 'staging' } },
       });
       configureLogline({ plugins: [reporter] });
@@ -60,9 +59,16 @@ test(
       assert.equal(items[0].context.environment, 'staging');
       assert.equal(items[0].level, 'ERROR');
       assert.doesNotMatch(JSON.stringify(items), /synthetic-private-value/);
-      await api('explorer/rows', 'POST', writer, query, 403);
+      await api('explorer/rows', 'POST', key, query, [401, 403]);
+      const batch = { projectId, events: [{ id: 'read-only', timestamp: 0, level: 'LOG', message: 'not accepted' }] };
+      await api('logs', 'POST', reader, batch, [401, 403]);
       await admin(`projects/${projectId}/members/${userId}`, 'DELETE', undefined, 204);
       await api('explorer/rows', 'POST', reader, query, 403);
+      ERROR('Project keys outlive membership');
+      assert.equal((await reporter.flush({ timeout: 5000 })).accepted, 1);
+      await admin(`projects/${projectId}/keys/${keyId}`, 'DELETE', undefined, 204);
+      ERROR('Revoked keys cannot upload');
+      assert.equal((await reporter.flush({ timeout: 5000 })).rejected, 1);
     } finally {
       reporter?.dispose();
       resetLoglineConfig();

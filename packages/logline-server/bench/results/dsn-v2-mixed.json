@@ -1,0 +1,148 @@
+{
+  "protocol": "project-dsn-v2",
+  "profile": {
+    "replicas": 2,
+    "projects": 24,
+    "seconds": 120,
+    "eventsPerSecond": 1000,
+    "batch": 50,
+    "writers": 6,
+    "readers": 3,
+    "hot": false,
+    "mcp": true,
+    "padding": 192
+  },
+  "wallSeconds": 120.082885667,
+  "generated": 113450,
+  "accepted": 113450,
+  "offeredBytes": 41569457,
+  "acceptedBytes": 41569457,
+  "eventsPerSec": 944.7641049750124,
+  "bytesPerSec": 346173.0351423734,
+  "statuses": {
+    "rows:200": 499,
+    "series:200": 500,
+    "groups:200": 501,
+    "upload:200": 2269,
+    "refresh:200": 500,
+    "export:200": 500,
+    "mcp:200": 500
+  },
+  "failures": {},
+  "retryAttempts": 0,
+  "deferred": 0,
+  "ackErrors": 0,
+  "maxClientInflightEvents": 300,
+  "firstAckAfterFailureMs": null,
+  "visibilityFailures": 0,
+  "ingestKeyMismatches": 0,
+  "latency": {
+    "queryAttemptMs": {
+      "n": 3000,
+      "p95": 52.63,
+      "p99": 182.85
+    },
+    "rowsMs": {
+      "n": 499,
+      "p95": 59.13,
+      "p99": 182.61
+    },
+    "seriesMs": {
+      "n": 500,
+      "p95": 50.06,
+      "p99": 172.66
+    },
+    "groupsMs": {
+      "n": 501,
+      "p95": 41.63,
+      "p99": 163.48
+    },
+    "uploadAttemptMs": {
+      "n": 2269,
+      "p95": 232.76,
+      "p99": 786.25
+    },
+    "uploadAckMs": {
+      "n": 2269,
+      "p95": 232.83,
+      "p99": 786.93
+    },
+    "ackToVisibleMs": {
+      "n": 57,
+      "p95": 32.85,
+      "p99": 97.36
+    },
+    "refreshMs": {
+      "n": 500,
+      "p95": 52.43,
+      "p99": 140.41
+    },
+    "exportMs": {
+      "n": 500,
+      "p95": 51.79,
+      "p99": 173.06
+    },
+    "mcpMs": {
+      "n": 500,
+      "p95": 66.34,
+      "p99": 213.79
+    }
+  },
+  "replayOk": true,
+  "counts": [
+    4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4700, 4700, 4700, 4700, 4700, 4700,
+    4700, 4700, 4700, 4700, 4700
+  ],
+  "acks": [
+    4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4700, 4700, 4700, 4700, 4700, 4700,
+    4700, 4700, 4700, 4700, 4700
+  ],
+  "offered": [
+    4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4750, 4700, 4700, 4700, 4700, 4700, 4700,
+    4700, 4700, 4700, 4700, 4700
+  ],
+  "revokedStatus": [401, 401],
+  "crossProjectStatus": 403,
+  "revokedKeyStatus": [401, 401],
+  "driverExitCode": 0,
+  "environment": {
+    "dockerVM": {
+      "cpus": 10,
+      "memoryBytes": 12528967680,
+      "arch": "aarch64",
+      "engine": "29.0.1"
+    },
+    "postgres": "17.12 (Debian 17.12-1.pgdg12+1)",
+    "nodeImageVersion": "v24.22.1",
+    "compose": "2.40.3",
+    "database": "fresh dedicated named volume",
+    "apiReplicas": 2,
+    "client": "Node v24.22.1 on the shared host",
+    "ingestion": "Bearer project key; projectId and events only",
+    "read": "PAT with logs:read"
+  },
+  "resources": {
+    "samples": {
+      "db-1": {
+        "samples": 20,
+        "meanCpuPct": 26.16,
+        "peakCpuPct": 52.66,
+        "peakWorkingSetMiB": 195.9
+      },
+      "server-1": {
+        "samples": 20,
+        "meanCpuPct": 11.76,
+        "peakCpuPct": 39.4,
+        "peakWorkingSetMiB": 164.2
+      },
+      "server-2": {
+        "samples": 20,
+        "meanCpuPct": 13.58,
+        "peakCpuPct": 27.8,
+        "peakWorkingSetMiB": 166.5
+      }
+    },
+    "logRelationBytesBefore": 73728,
+    "logRelationBytesAfter": 160243712
+  }
+}

@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
-import { bearer, requireAdmin } from './auth.mjs';
+import { ingestOrigins, ingestOriginHeaders } from './ingest-origin.mjs';
+import { bearer, requireAdmin, validProjectKey } from './auth.mjs';
 import { pathToFileURL } from 'node:url';
 import { createPool, migrate, prune } from './db.mjs';
 import { envelope, fault, ingest } from './ingest.mjs';
@@ -19,7 +20,7 @@ export function configuration(env) {
   if (
     !env.LOGLINE_ADMIN_TOKEN ||
     Buffer.byteLength(env.LOGLINE_ADMIN_TOKEN) < 32 ||
-    env.LOGLINE_ADMIN_TOKEN.startsWith('llpat_') ||
+    /^(?:llpat|llpk)_/.test(env.LOGLINE_ADMIN_TOKEN) ||
     env.LOGLINE_ADMIN_TOKEN.includes(',') ||
     !/^[!-~]+$/.test(env.LOGLINE_ADMIN_TOKEN)
   )
@@ -27,6 +28,7 @@ export function configuration(env) {
   if (!['true', 'false'].includes(env.LOGLINE_MCP_ENABLED ?? 'true')) throw Error('Invalid LOGLINE_MCP_ENABLED');
   return {
     url: env.DATABASE_URL,
+    origins: ingestOrigins(env.LOGLINE_INGEST_ORIGINS),
     adminToken: env.LOGLINE_ADMIN_TOKEN,
     mcp: env.LOGLINE_MCP_ENABLED !== 'false',
     port: integer('PORT', 4318, 0, 65535),
@@ -137,10 +139,11 @@ export async function startServer({ env = process.env, port, host } = {}) {
       let lane,
         project,
         ids = 0;
+      let originHeaders;
       const started = performance.now();
       const send = (status, body, headers = {}) => {
         if (res.headersSent || res.destroyed) return;
-        const out = new Headers(headers);
+        const out = new Headers({ ...originHeaders, ...headers });
         if (!out.has('content-type') && body !== undefined) out.set('content-type', 'application/json; charset=utf-8');
         out.set('cache-control', 'no-store');
         out.set('x-content-type-options', 'nosniff');
@@ -168,10 +171,17 @@ export async function startServer({ env = process.env, port, host } = {}) {
           await readyCheck;
           return send(200, { status: 'ready' });
         }
+        if (path === '/api/v1/logs' && (req.method === 'POST' || req.method === 'OPTIONS')) {
+          originHeaders = ingestOriginHeaders(req, config.origins);
+          if (req.method === 'OPTIONS') return send(204);
+        }
         const token = bearer(req);
         if (!token) throw fault(401, 'unauthorized', 'Bearer token required.');
+        const upload = path === '/api/v1/logs' && req.method === 'POST';
         if (path.startsWith('/api/v1/admin/') || path === '/metrics') requireAdmin(token, config.adminToken);
-        else if (!/^llpat_[A-Za-z0-9_-]{43}$/.test(token))
+        else if (upload) {
+          if (!validProjectKey(token)) throw fault(401, 'unauthenticated', 'A valid project key is required.');
+        } else if (!/^llpat_[A-Za-z0-9_-]{43}$/.test(token))
           throw fault(401, 'unauthenticated', 'A valid PAT is required.');
         if (path === '/metrics' && req.method === 'GET') {
           return send(200, metrics(counts, active, hist), { 'content-type': 'text/plain; version=0.0.4' });
@@ -181,7 +191,6 @@ export async function startServer({ env = process.env, port, host } = {}) {
           if (req.method !== 'POST') throw fault(405, 'method', 'Use POST.');
           if (req.headers.origin !== undefined) throw fault(403, 'origin', 'Browser origins are not accepted.');
         }
-        const upload = path === '/api/v1/logs' && req.method === 'POST';
         const which = upload ? 'ingest' : 'query';
         if (active[which] >= (upload ? config.ingestMax : config.queryMax))
           throw fault(503, 'overload', 'Request capacity exceeded.');

@@ -8,8 +8,10 @@ k(){ kubectl --context "$KUBE_CONTEXT" -n "$BENCH_NAMESPACE" "$@"; }
 k rollout status deployment/logline-server --timeout=180s
 probe=rollout-probe-$$
 image=$(k get deployment logline-server -o 'jsonpath={.spec.template.spec.containers[0].image}')
-pods(){ k get pod -l app=logline-server -o 'jsonpath={range .items[?(@.status.phase=="Running")]}{.status.podIP}{" "}{end}'; }
-old=$(pods); [[ $(wc -w <<< "$old") -eq 2 ]]
+# Capture immutable UIDs with the IPs: addresses may be reused during replacement.
+pods(){ k get pod -l app=logline-server -o 'go-template={{range .items}}{{if and (eq .status.phase "Running") (not .metadata.deletionTimestamp)}}{{.metadata.uid}} {{.status.podIP}}{{"\n"}}{{end}}{{end}}'; }
+old_rows=$(pods); [[ $(wc -w <<< "$old_rows") -eq 4 ]]
+old=$(awk '{print $2}' <<< "$old_rows")
 k create -f - <<YAML
 apiVersion: v1
 kind: Pod
@@ -40,9 +42,14 @@ k exec "$probe" -- test -f /tmp/rolling-ready
 k rollout restart deployment/logline-server
 k rollout status deployment/logline-server --timeout=150s
 # Exclude terminating instances before addressing both new replicas directly.
+replaced(){
+  [[ $(wc -w <<< "$fresh_rows") -eq 4 ]] &&
+    awk 'NR==FNR {old[$1]=1; next} $1 in old {exit 1}' <(printf '%s\n' "$old_rows") <(printf '%s\n' "$fresh_rows")
+}
 for ((i=0; i<30; i++)); do
-  fresh=$(pods); [[ $(wc -w <<< "$fresh") -eq 2 ]] && break; sleep 1
+  fresh_rows=$(pods); replaced && break; sleep 1
 done
-[[ $(wc -w <<< "$fresh") -eq 2 ]]
+replaced
+fresh=$(awk '{print $2}' <<< "$fresh_rows")
 printf '%s' "$fresh" | k exec -i "$probe" -- sh -c 'cat >/tmp/addresses && mv /tmp/addresses /tmp/rolling-new-pods'
 wait "$worker"

@@ -1,4 +1,4 @@
-import { authorize } from './auth.mjs';
+import { authorizeUpload } from './auth.mjs';
 import { transaction } from './db.mjs';
 
 const levels = new Set(['TRACE', 'DEBUG', 'LOG', 'WARN', 'ERROR']);
@@ -30,11 +30,11 @@ export function envelope(body, maxEvents) {
     !object(body) ||
     typeof body.projectId !== 'string' ||
     !uuid.test(body.projectId) ||
-    !identity(body.service) ||
+    Object.keys(body).some((key) => !['projectId', 'events'].includes(key)) ||
     !Array.isArray(body.events) ||
     !body.events.length
   )
-    throw fault(400, 'invalid_batch', 'Expected projectId, service, and nonempty events array.');
+    throw fault(400, 'invalid_batch', 'Expected only projectId and a nonempty events array.');
   if (body.events.length > maxEvents) throw fault(413, 'batch_limit', 'Batch event limit exceeded.');
   const ids = new Set();
   for (const e of body.events) {
@@ -51,6 +51,7 @@ export function partition(events) {
     rejectedEventIds = [];
   for (const e of events) {
     if (
+      Object.hasOwn(e, 'ingestKeyId') ||
       !Number.isSafeInteger(e.timestamp) ||
       e.timestamp < 0 ||
       e.timestamp > 253402300799999 ||
@@ -77,7 +78,7 @@ export function partition(events) {
 /** Commit new records and shared quota usage together. Identical IDs replay for free; the first committed value wins. */
 export async function ingest(db, token, projectId, body, config) {
   return transaction(db, async (client) => {
-    await authorize(client, token, 'logs:write', [projectId]);
+    const keyId = await authorizeUpload(client, token, projectId);
     const { valid, rejectedEventIds } = partition(body.events);
     const result = { acceptedEventIds: valid.map((v) => v.event.id), retryableEventIds: [], rejectedEventIds };
     if (!valid.length) return { status: 200, body: result, inserted: 0, bytes: 0 };
@@ -124,9 +125,9 @@ export async function ingest(db, token, projectId, body, config) {
       };
     }
     await client.query(
-      `INSERT INTO log_events(project_id,event_id,service,level,timestamp_ms,message,fields,context,event)
-      SELECT $1,e->>'id',$2,e->>'level',(e->>'timestamp')::bigint,e->>'message',coalesce(e->'fields','{}'::jsonb),coalesce(e->'context','{}'::jsonb),e FROM jsonb_array_elements($3::jsonb) e`,
-      [projectId, body.service, JSON.stringify(fresh.map((v) => v.event))],
+      `INSERT INTO log_events(project_id,event_id,level,timestamp_ms,message,fields,context,event,ingest_key_id)
+      SELECT $1,e->>'id',e->>'level',(e->>'timestamp')::bigint,e->>'message',coalesce(e->'fields','{}'::jsonb),coalesce(e->'context','{}'::jsonb),e,$3 FROM jsonb_array_elements($2::jsonb) e`,
+      [projectId, JSON.stringify(fresh.map((v) => v.event)), keyId],
     );
     return { status: 200, body: result, inserted: fresh.length, bytes };
   });

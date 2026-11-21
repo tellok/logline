@@ -7,20 +7,46 @@ import {
 
 /** Address and credentials for exactly one destination. No hosted service is assumed. */
 export interface LoglineServerOptions {
-  /** Deployment root, optionally including a reverse-proxy path prefix. */
-  readonly baseUrl: string | URL;
-  /** Immutable server-issued project ID, not the project's slug or display name. */
-  readonly projectId: string;
-  readonly service: string;
-  /** User-owned logs:write PAT, or a provider evaluated for each batch to support rotation. */
-  readonly token: string | (() => string | Promise<string>);
+  /** Project ingestion DSN: https://<project-key>@host[/prefix]/<project-uuid>. */
+  readonly dsn: string;
   /** Optional fetch-compatible client, for example in a non-browser runtime. */
   readonly fetch?: typeof fetch;
 }
 
-function validToken(token: string): string {
-  if (typeof token !== 'string' || !/^[!-~]+$/.test(token)) throw new TypeError('Expected a non-empty bearer token');
-  return token;
+/** Parse the raw DSN before URL normalization; never include credentials or parser diagnostics in errors. */
+function destination(dsn: string) {
+  const invalid = () => new TypeError('Expected a project ingestion DSN (HTTPS, or HTTP on loopback)');
+  if (typeof dsn !== 'string' || /[\s\\?#]/.test(dsn) || !/^https?:\/\/llpk_[A-Za-z0-9_-]{43}@[^/@]+\//i.test(dsn))
+    throw invalid();
+  let url: URL;
+  try {
+    url = new URL(dsn);
+  } catch {
+    throw invalid();
+  }
+  const key = url.username;
+  const projectId = url.pathname.slice(url.pathname.lastIndexOf('/') + 1);
+  const loopback =
+    ['localhost', '[::1]'].includes(url.hostname) ||
+    (/^127\./.test(url.hostname) && /^\d+\.\d+\.\d+\.\d+$/.test(url.hostname));
+  if (
+    !/^llpk_[A-Za-z0-9_-]{43}$/.test(key) ||
+    url.password ||
+    (url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback)) ||
+    !/^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(projectId)
+  )
+    throw invalid();
+  url.username = '';
+  url.pathname = url.pathname.slice(0, -projectId.length) + 'api/v1/logs';
+  // Refuse a misconfigured DSN that repeats the credential in the hostname or proxy prefix.
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(url.href);
+  } catch {
+    throw invalid();
+  }
+  if (decoded.toLowerCase().includes(key.toLowerCase())) throw invalid();
+  return { endpoint: url.href, projectId, key };
 }
 
 function retryAfter(value: string | null): number | undefined {
@@ -73,54 +99,44 @@ async function acknowledgement(response: Response): Promise<ReportingSendResult>
 
 /** Create a one-attempt HTTP transport. The reporting plugin owns all buffering, retries and timeouts. */
 export function createLoglineServerTransport(options: LoglineServerOptions): ReportingTransport {
-  const base = new URL(options.baseUrl);
-  const loopback = ['127.0.0.1', '[::1]', 'localhost'].includes(base.hostname);
-  if (
-    (base.protocol !== 'https:' && !(base.protocol === 'http:' && loopback)) ||
-    base.username ||
-    base.password ||
-    base.search ||
-    base.hash
-  )
-    throw new TypeError('Expected a clean HTTPS deployment URL (HTTP allowed on loopback)');
-  base.pathname = `${base.pathname.replace(/\/+$/, '')}/api/v1/logs`;
-  const { projectId, service, token, fetch: request = globalThis.fetch } = options;
-  if (typeof projectId !== 'string' || !/^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(projectId))
-    throw new TypeError('Expected a server-issued project UUID');
-  if (
-    typeof service !== 'string' ||
-    !service.trim() ||
-    service.includes('\0') ||
-    new TextEncoder().encode(service).length > 128 ||
-    typeof request !== 'function'
-  )
-    throw new TypeError('Expected a service name (1–128 UTF-8 bytes) and fetch');
-  if (typeof token !== 'function') validToken(token);
+  const { endpoint, projectId, key } = destination(options.dsn);
+  const request = options.fetch ?? globalThis.fetch;
+  if (typeof request !== 'function') throw new TypeError('Expected a fetch implementation');
   return {
     name: 'logline-server',
     async send(batch, { signal }) {
-      const credential = validToken(typeof token === 'function' ? await token() : token);
       signal.throwIfAborted();
-      const response = await request(base.href, {
-        method: 'POST',
-        credentials: 'omit',
-        redirect: 'error',
-        cache: 'no-store',
-        signal,
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${credential}` },
-        body: JSON.stringify({ projectId, service, events: batch }),
-      });
+      let response: Response;
+      try {
+        response = await request(endpoint, {
+          method: 'POST',
+          credentials: 'omit',
+          redirect: 'error',
+          cache: 'no-store',
+          signal,
+          headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+          body: JSON.stringify({ projectId, events: batch }),
+        });
+      } catch {
+        // A custom fetch implementation may include its request headers in the error.
+        signal.throwIfAborted();
+        throw new Error('Ingestion request failed');
+      }
       const delay = retryAfter(response.headers.get('Retry-After'));
       // Quota exhaustion can acknowledge already committed IDs while deferring only new ones.
       if (response.ok || response.status === 429) {
         try {
           const result = await acknowledgement(response);
           return { ...result, retryAfterMs: Math.max(delay ?? 0, result.retryAfterMs ?? 0) };
-        } catch (error) {
-          if (response.ok || signal.aborted) throw error;
+        } catch {
+          signal.throwIfAborted();
+          if (response.ok) throw new Error('Invalid ingestion acknowledgement');
           // A generic gateway 429 may have an HTML or empty response rather than a partition.
         }
-      } else await response.body?.cancel();
+      } else {
+        // Ignore cleanup failures; a stream cancellation error can contain the upstream response body.
+        await response.body?.cancel().catch(() => undefined);
+      }
       const transient = response.status >= 500 || [408, 425, 429].includes(response.status);
       const eventIds = batch.map((event) => event.id);
       return {

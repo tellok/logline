@@ -50,7 +50,7 @@ try {
     'createLoglineServerTransport, createLoglineServerReporter',
   ];
   const runtimeProbe = `
-const options = { baseUrl: 'https://example.invalid', projectId: '00000000-0000-4000-8000-000000000001', service: 'smoke', token: 'synthetic',
+const options = { dsn: 'https://llpk_' + 's'.repeat(43) + '@example.invalid/00000000-0000-4000-8000-000000000001',
   fetch() { throw new Error('Unexpected request while constructing a reporter'); } };
 const custom = createReportingLoggingPlugin({ transport: createLoglineServerTransport(options) });
 const reporter = createLoglineServerReporter(options);
@@ -86,11 +86,13 @@ for (const plugin of [custom, reporter]) {
 import { configureLogline } from 'logline';
 import { createReportingLoggingPlugin, type ReportingTransport } from 'logline/plugin/reporting';
 import { createLoglineServerReporter, createLoglineServerTransport, type LoglineServerOptions } from 'logserver-reporter';
-const options: LoglineServerOptions = { baseUrl: new URL('https://example.invalid'), projectId: 'synthetic', service: 'test', token: async () => 'synthetic' };
+const options: LoglineServerOptions = { dsn: 'https://llpk_' + 's'.repeat(43) + '@example.invalid/00000000-0000-4000-8000-000000000001' };
 const transport: ReportingTransport = createLoglineServerTransport(options);
 const custom = createReportingLoggingPlugin({ transport, transform: event => ({ ...event, message: event.message.toUpperCase() }) });
 const reporter = createLoglineServerReporter({ ...options, reporting: { maxBatchEvents: 4 } });
 configureLogline({ plugins: [custom, reporter] });
+// @ts-expect-error PATs and legacy destination options are not supported.
+createLoglineServerReporter({ ...options, token: 'not-an-upload-key' });
 // @ts-expect-error An untyped reporter could hide broken declaration imports.
 reporter.flush({ timeout: 'invalid' });
 `,

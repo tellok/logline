@@ -6,15 +6,14 @@ import pg from 'pg';
 import { authorize, bearer, requireAdmin } from '../src/auth.mjs';
 
 const admin = randomBytes(32).toString('hex');
-const read = 'logs:read',
-  write = 'logs:write';
-const both = [read, write];
+const read = 'logs:read';
 
 test('bootstrap and PAT credentials occupy separate namespaces and fail closed', async () => {
   assert.equal(bearer({ headers: { authorization: 'Bearer a, Bearer b' } }), undefined);
   assert.throws(() => requireAdmin('short', 'short'), { status: 401 });
   assert.throws(() => requireAdmin(undefined, undefined), { status: 401 });
   assert.throws(() => requireAdmin('llpat_' + admin, 'llpat_' + admin), { status: 401 });
+  assert.throws(() => requireAdmin('llpk_' + admin, 'llpk_' + admin), { status: 401 });
   assert.doesNotThrow(() => requireAdmin(admin, admin));
   await assert.rejects(authorize(null, admin, read), { status: 401 });
 });
@@ -77,7 +76,6 @@ test(
       projects = '/projects',
       teams = '/teams';
     const { userId: u } = await create(users, { displayName: 'Example owner' });
-    const { userId: svc } = await create(users, { displayName: 'Service' });
     const { teamId: a } = await create(teams, { displayName: 'First team' });
     const { teamId: b } = await create(teams, { displayName: 'Second team' });
     const p1 = await create(projects, { slug: 'payments-api_v2', displayName: '支付服务' });
@@ -85,8 +83,7 @@ test(
     const p = p1.projectId,
       q = p2.projectId;
     const reader = await pat(u, [read]),
-      writer = await pat(u, [write]),
-      uploader = await pat(svc, [write]);
+      otherReader = await pat(u, [read]);
     const allow = (token, scope, ids) => authorize(pools[index++ % 2], token.secret, scope, ids);
     const deny = async (token, scope, ids, status = 403) => {
       for (const pool of pools) await assert.rejects(authorize(pool, token.secret, scope, ids), { status });
@@ -132,7 +129,7 @@ test(
       assert.deepEqual(statuses.sort(), [201, 409]);
     });
     await t.test('only admin can manage; no token material on subsequent reads', async () => {
-      assert.notEqual(reader.secret, writer.secret);
+      assert.notEqual(reader.secret, otherReader.secret);
       const listed = (await get(`/users/${u}/tokens`)).items;
       assert.equal(listed.length, 2);
       assert.deepEqual(
@@ -142,121 +139,116 @@ test(
       for (const [method, path, body] of [
         ['GET', '/users'],
         ['PATCH', `/users/${u}`, { enabled: false }],
-        ['PUT', grant(p, 'members', u), { permissions: both }],
-        ['POST', `/users/${u}/tokens`, { scopes: both }],
+        ['PUT', grant(p, 'members', u), { permissions: [read] }],
+        ['POST', `/users/${u}/tokens`, { scopes: [read] }],
         ['DELETE', `/teams/${a}`],
       ])
         await call(method, path, body, 401, reader.secret);
       await call('POST', `/users/${u}/tokens`, { scopes: ['admin'] }, 400);
       await call('POST', `/users/${u}/tokens`, { scopes: [read], projectIds: [p] }, 400);
       await call('PUT', grant(p, 'members', u), { permissions: [] }, 400);
-      await call('PUT', grant(p, 'members', randomUUID()), { permissions: both }, 404);
+      await call('PUT', grant(p, 'members', randomUUID()), { permissions: [read] }, 404);
       await call('GET', '/tokens', undefined, 404);
       await deny({ secret: admin }, read, [p], 401);
       assert.deepEqual((await allow(reader, read)).projects, []);
       await deny(reader, read, [p]);
     });
     const membership = (team, user) => `/teams/${team}/members/${user}`;
-    await t.test(
-      'scope intersects the current union of direct and team grants; overlapping sources survive rename/removal',
-      async () => {
-        await put(grant(p, 'teams', a), { permissions: both });
-        await put(grant(q, 'teams', a), { permissions: [read] });
-        await deny(reader, read, [p, q]);
-        await put(membership(a, u));
-        await put(membership(a, u));
-        assert.equal((await allow(reader, read, [p, q])).projects.length, 2);
-        await deny(reader, write, [p]);
-        await deny(writer, write, [q]);
-        const batch = {
-          projectId: p,
-          service: 'checkout',
-          events: [{ id: 'rename-fixture', timestamp: Date.now(), level: 'LOG', message: 'before rename' }],
-        };
-        await call('POST', '/api/v1/logs', batch, 403, reader.secret);
-        await call('POST', '/api/v1/logs', batch, 401, admin);
-        assert.deepEqual((await call('POST', '/api/v1/logs', batch, 200, writer.secret)).acceptedEventIds, [
-          'rename-fixture',
-        ]);
-        await allow(writer, write, [p]);
-        assert.equal((await get(`/users/${u}/teams`)).items[0].teamId, a);
-        assert.equal((await get(`/teams/${a}/members`)).items[0].userId, u);
-        assert.equal((await get(`/teams/${a}/projects`)).items.length, 2);
-        assert.equal((await get(`/projects/${p}/teams`)).items[0].teamId, a);
-        assert.equal((await get(`/users/${u}/memberships`)).items.length, 0);
-        await put(membership(b, u));
-        await put(grant(p, 'teams', b), { permissions: [read] });
-        await put(grant(p, 'members', u), { permissions: [write] });
-        const renamed = await call('PATCH', `/projects/${p}`, { slug: 'new-slug_v3', displayName: '重命名' });
-        assert.equal(renamed.projectId, p);
-        assert.deepEqual((await allow(reader, read, [p])).projects, [renamed]);
-        const query = { projectIds: [p] };
-        const rows = await call('POST', '/api/v1/explorer/rows', { query }, 200, reader.secret);
-        assert.equal(rows.items[0].message, 'before rename');
-        assert.equal(
-          (await call('POST', '/api/v1/explorer/export', { query, format: 'jsonl' }, 200, reader.secret)).rowCount,
-          1,
-        );
-        assert.equal((await get(`/projects/${p}/members`)).items[0].userId, u);
-        assert.deepEqual((await get(`/users/${u}/memberships`)).items[0], { ...renamed, permissions: [write] });
-        const sources = (await get(`/users/${u}/access/${p}`)).items;
-        assert.deepEqual(
-          sources
-            .filter((s) => s.type === 'team')
-            .map((s) => s.teamId)
-            .sort(),
-          [a, b].sort(),
-        );
-        assert.equal(sources.filter((s) => s.type === 'direct').length, 1);
-        assert.deepEqual((await get(`/users/${u}/access`)).items.find((row) => row.projectId === p).permissions, both);
-        await del(membership(a, u));
-        await deny(reader, read, [q]);
-        await allow(reader, read, [p]);
-        await allow(writer, write, [p]);
-        await put(grant(p, 'teams', b), { permissions: [write] });
-        await deny(reader, read, [p]);
-        await put(grant(p, 'members', u), { permissions: both });
-        await allow(reader, read, [p]);
-        await del(grant(p, 'members', u));
-        await deny(reader, read, [p]);
-        await allow(writer, write, [p]);
-        await del(grant(p, 'teams', b));
-        await deny(writer, write, [p]);
-        await put(membership(a, u));
-        await allow(reader, read, [p, q]);
-        await del(`/teams/${a}`);
-        await deny(reader, read, [p, q]);
-        assert.deepEqual((await allow(reader, read)).projects, []);
-        assert.deepEqual((await call('GET', '/api/v1/explorer/projects', undefined, 200, reader.secret)).items, []);
-        await call('POST', '/api/v1/explorer/rows', { query }, 403, reader.secret);
-        await call('POST', '/api/v1/explorer/export', { query, format: 'jsonl' }, 403, reader.secret);
-      },
-    );
-    await t.test('service-user isolation, disable/enable all PATs, independent revocation', async () => {
-      await put(grant(q, 'members', svc), { permissions: [write] });
-      await allow(uploader, write, [q]);
-      await deny(uploader, write, [p]);
-      await deny(uploader, read, [q]);
-      const batch = {
-        projectId: q,
-        service: 'service',
-        events: [{ id: 'service-fixture', timestamp: Date.now(), level: 'LOG', message: 'service event' }],
-      };
-      await call('POST', '/api/v1/logs', batch, 200, uploader.secret);
-      await call('POST', '/api/v1/logs', { ...batch, projectId: p }, 403, uploader.secret);
-      await put(grant(p, 'members', u), { permissions: both });
+    await t.test('only read grants and PAT scopes are issued; overlapping read sources survive removal', async () => {
+      for (const values of [['logs:write'], [read, 'logs:write']]) {
+        await call('POST', `/users/${u}/tokens`, { scopes: values }, 400);
+        await call('PUT', grant(p, 'members', u), { permissions: values }, 400);
+        await call('PUT', grant(p, 'teams', a), { permissions: values }, 400);
+      }
+      await put(grant(p, 'teams', a), { permissions: [read] });
+      await put(grant(q, 'teams', a), { permissions: [read] });
+      await deny(reader, read, [p, q]);
+      await put(membership(a, u));
+      assert.equal((await allow(reader, read, [p, q])).projects.length, 2);
+      assert.equal((await get(`/users/${u}/teams`)).items[0].teamId, a);
+      assert.equal((await get(`/teams/${a}/members`)).items[0].userId, u);
+      assert.equal((await get(`/teams/${a}/projects`)).items.length, 2);
+      assert.equal((await get(`/projects/${p}/teams`)).items[0].teamId, a);
+      await put(membership(b, u));
+      await put(grant(p, 'teams', b), { permissions: [read] });
+      await put(grant(p, 'members', u), { permissions: [read] });
+      const renamed = await call('PATCH', `/projects/${p}`, { slug: 'new-slug_v3', displayName: '重命名' });
+      assert.deepEqual((await allow(reader, read, [p])).projects, [renamed]);
+      assert.deepEqual((await get(`/users/${u}/memberships`)).items[0], { ...renamed, permissions: [read] });
+      const sources = (await get(`/users/${u}/access/${p}`)).items;
+      assert.deepEqual(
+        sources
+          .filter((s) => s.type === 'team')
+          .map((s) => s.teamId)
+          .sort(),
+        [a, b].sort(),
+      );
+      assert.equal(sources.filter((s) => s.type === 'direct').length, 1);
+      await del(membership(a, u));
+      await deny(reader, read, [q]);
+      await del(grant(p, 'members', u));
       await allow(reader, read, [p]);
-      await allow(writer, write, [p]);
+      await del(`/teams/${b}`);
+      await deny(reader, read, [p]);
+      await put(grant(p, 'members', u), { permissions: [read] });
       await call('PATCH', `/users/${u}`, { enabled: false });
       await deny(reader, read, [p], 401);
-      await deny(writer, write, [p], 401);
+      await deny(otherReader, read, [p], 401);
       await call('PATCH', `/users/${u}`, { enabled: true });
-      await del(`/users/${u}/tokens/${reader.tokenId}`);
-      await del(`/users/${u}/tokens/${reader.tokenId}`);
-      await deny(reader, read, [p], 401);
-      await allow(writer, write, [p]);
-      assert.ok((await get(`/users/${u}/tokens`)).items.find((t) => t.tokenId === reader.tokenId).revokedAt);
-      await call('DELETE', `/users/${svc}/tokens/${writer.tokenId}`, undefined, 404);
+      await del(`/users/${u}/tokens/${otherReader.tokenId}`);
+      await del(`/users/${u}/tokens/${otherReader.tokenId}`);
+      await deny(otherReader, read, [p], 401);
+      await allow(reader, read, [p]);
     });
+    await t.test(
+      'project keys write only to their project, rotate independently and never confer read or admin access',
+      async () => {
+        const path = `/projects/${p}/keys`;
+        await call('POST', path, { name: ' ' }, 400);
+        await call('POST', path, { name: 'x', projectId: q }, 400);
+        await call('POST', path, { name: 'x' }, 401, reader.secret);
+        const first = await create(path, { name: 'frontend' }),
+          second = await create(path, { name: 'backend' });
+        assert.match(first.key, /^llpk_[A-Za-z0-9_-]{43}$/);
+        assert.notEqual(first.key, second.key);
+        assert.equal(first.projectId, p);
+        assert.deepEqual(
+          Object.keys(first).sort(),
+          ['keyId', 'projectId', 'name', 'key', 'issuedAt', 'revokedAt'].sort(),
+        );
+        const listed = await get(path + '?limit=1');
+        assert.deepEqual(
+          Object.keys(listed.items[0]).sort(),
+          ['keyId', 'projectId', 'name', 'issuedAt', 'revokedAt'].sort(),
+        );
+        assert.notEqual((await get(path + `?cursor=${listed.nextCursor}`)).items[0].keyId, listed.items[0].keyId);
+        assert.deepEqual((await get(`/projects/${q}/keys`)).items, []);
+        const batch = {
+          projectId: p,
+          events: [{ id: 'key-check', level: 'LOG', timestamp: Date.now(), message: 'synthetic' }],
+        };
+        const logs = '/api/v1/logs';
+        for (const token of [reader.secret, admin, 'llpk_' + 'a'.repeat(43)])
+          await call('POST', logs, batch, 401, token);
+        await call('POST', logs, { ...batch, service: 'legacy' }, 400, first.key);
+        await call('POST', logs, { ...batch, projectId: q }, 403, first.key);
+        assert.deepEqual((await call('POST', logs, batch, 200, first.key)).acceptedEventIds, ['key-check']);
+        await call('GET', path, undefined, 401, first.key);
+        await call('GET', '/api/v1/explorer/projects', undefined, 401, first.key);
+        assert.equal(
+          (await call('POST', '/api/v1/explorer/rows', { query: { projectIds: [p] } }, 200, reader.secret)).items[0]
+            .message,
+          'synthetic',
+        );
+        await call('PATCH', `/users/${u}`, { enabled: false });
+        await call('POST', logs, batch, 200, first.key);
+        await call('DELETE', `/projects/${q}/keys/${first.keyId}`, undefined, 404);
+        await del(path + '/' + first.keyId);
+        await del(path + '/' + first.keyId);
+        for (let i = 0; i < 2; i++) await call('POST', logs, batch, 401, first.key);
+        await call('POST', logs, batch, 200, second.key);
+        assert.ok((await get(path)).items.find((row) => row.keyId === first.keyId).revokedAt);
+      },
+    );
   },
 );

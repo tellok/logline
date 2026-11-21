@@ -42,23 +42,20 @@ configureLogline({
 
 ## Upload to your own server
 
-Install `logserver-reporter@beta` alongside the matching `logline@beta` release. The reporter is optional: importing Logline alone sends nothing. Configure one instance per destination, using its deployment URL and immutable project ID. This example runs in a trusted application process:
+Install `logserver-reporter@beta` alongside the matching `logline@beta` release. The reporter is optional: importing Logline alone sends nothing. Configure one reporter per destination using a project DSN. This example runs in a trusted application process:
 
 ```ts
 import { configureLogline } from 'logline';
 import { createLoglineServerReporter } from 'logserver-reporter';
 
 const reporter = createLoglineServerReporter({
-  baseUrl: 'https://telemetry.example.org/logline',
-  projectId: process.env.LOGLINE_PROJECT_ID!,
-  service: 'checkout',
-  token: () => process.env.LOGLINE_WRITE_TOKEN!,
+  dsn: process.env.LOGLINE_DSN!,
   reporting: { sampleRate: 0.1, levelSampleRates: { ERROR: 1 } },
 });
 configureLogline({ plugins: [reporter] });
 ```
 
-Use a dedicated write-only service identity, never an administrator token. Do not put a private PAT in a distributed browser bundle; send through an authenticated same-origin application gateway instead. There is no implicit hosted endpoint, durable client queue, or upload of IndexedDB history. See the [reporting contract](./docs/reporting.md), [ingestion API](./docs/server-ingestion.md), [administration](./docs/server-admin.md), [Logs Explorer](./docs/server-explorer.md), [MCP tools](./docs/server-mcp.md), and [deployment and performance guide](./docs/server-operations.md).
+Create a project ingestion key in the admin API, then construct `https://<key>@<host>[/prefix]/<project-uuid>`. The DSN can only submit events to that project; it belongs to the project, not a member. A browser DSN is public: anyone who copies it can submit events. Use a separate key for your backend, and generate trusted audit events there. Browser uploads that send an Origin require `LOGLINE_INGEST_ORIGINS` on the server. There is no implicit hosted endpoint, durable client queue, or upload of IndexedDB history. See the [reporting contract](./docs/reporting.md), [ingestion API](./docs/server-ingestion.md), [administration](./docs/server-admin.md), [Logs Explorer](./docs/server-explorer.md), [MCP tools](./docs/server-mcp.md), and [deployment and performance guide](./docs/server-operations.md).
 
 ## Vite integration
 

@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 const file = process.argv[2];
 assert(file, 'Usage: node qualify.mjs steady.json');
 const r = JSON.parse(readFileSync(file, 'utf8'));
+assert.equal(r.protocol, 'project-dsn-v2', 'Not current DSN-key evidence (legacy v1 used a PAT for uploads).');
 const p = r.profile;
 const validSamples = (name) => r.latency[name]?.n > 0;
 const checks = {
@@ -29,9 +30,13 @@ const checks = {
     r.ackErrors === 0 &&
     r.deferred === 0 &&
     r.visibilityFailures === 0 &&
+    r.ingestKeyMismatches === 0 &&
     r.replayOk &&
     r.revokedStatus.length === 2 &&
     r.revokedStatus.every((s) => s === 401) &&
+    r.crossProjectStatus === 403 &&
+    r.revokedKeyStatus?.length === 2 &&
+    r.revokedKeyStatus.every((s) => s === 401) &&
     Object.keys(r.failures).length === 0 &&
     r.counts.length === p.projects &&
     r.counts.every((n, i) => typeof n === 'number' && n > 0 && n === r.acks[i]),

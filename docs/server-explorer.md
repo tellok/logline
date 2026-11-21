@@ -2,13 +2,13 @@
 
 [简体中文](./server-explorer.zh-CN.md) | [README](../README.md)
 
-All routes below are relative to `/api/v1/explorer`. Send `Authorization: Bearer <user PAT>` and `Content-Type: application/json` for JSON bodies. The PAT needs `logs:read`, **including for saved-view writes**. The API intersects the token's scope with the owner's current direct and team grants, in the same PostgreSQL snapshot as the query. The administrator credential is not a data-plane credential. A UI can call these APIs through a trusted backend; never ship the administrator credential to a browser.
+All routes below are relative to `/api/v1/explorer`. Send `Authorization: Bearer <user PAT>` and `Content-Type: application/json` for JSON bodies. The PAT needs `logs:read`, **including for saved-view writes**. The API intersects the token's scope with the owner's current direct and team grants, in the same PostgreSQL snapshot as the query. Neither a project ingestion key nor the administrator credential can read logs. A UI can call these APIs through a trusted backend; never ship the administrator credential to a browser.
 
 ## Browse a project
 
 1. `GET /projects?limit=50&offset=0` returns `items: [{projectId,slug,displayName}]`. Select the immutable `projectId`, not the editable label or slug. Omit `query.projectIds` to search all currently readable projects. Explicit selections are all-or-nothing: even one inaccessible/unknown project returns 403.
-2. `POST /selectors` with `{query,limit?,offset?}` returns observed `{projectId,service,environment}` combinations in that scope and time range. `environment` can be null. `POST /fields` uses the same body and returns `{name,types,operators}`. Discovery examines up to 200 newest matching events and at most 512 field names, returning `sampled:true` if bounded. An unobserved field can still be queried. Built-in names are part of the public schema, not evidence of stored events.
-3. `POST /rows` with the following body; `items` are rows and `identities` are the corresponding `{projectId,eventId}` pairs, even when IDs are not projected. Without `columns` each item is the complete stored event plus its canonical project, service and event identity. Use `columns` in the given order for table layout (JSON object key order is not a presentation contract).
+2. `POST /selectors` with `{query,limit?,offset?}` returns observed `{projectId,environment}` combinations in that scope and time range. `environment` can be null. `POST /fields` uses the same body and returns `{name,types,operators}`. Discovery examines up to 200 newest matching events and at most 512 field names, returning `sampled:true` if bounded. An unobserved field can still be queried. Built-in names are part of the public schema, not evidence of stored events.
+3. `POST /rows` with the following body; `items` are rows and `identities` are the corresponding `{projectId,eventId}` pairs, even when IDs are not projected. Without `columns` each item is the complete stored event plus its canonical project and event identity. Use `columns` in the given order for table layout (JSON object key order is not a presentation contract).
 
 ```json
 {
@@ -33,6 +33,8 @@ Rows return `{items,identities,range:{start,end},limited,nextCursor}`. Pass `cur
 
 All discovery lists and view lists use `limit` 1–100 (default 50) and `offset` 0–10,000. Responses include `limited` and `nextOffset` (null at the end or offset budget). Selectors/fields also return the evaluated `range`.
 
+Use `ingestKeyId` to filter, group or project by the ID of the key accepted by the server (a public UUID, not the credential). Older events without a recorded key return `null`. Details, full rows and raw JSONL exports overlay this server metadata on the original event. Only the top-level marker identifies the credential used; raw attributes such as `fields.ingestKeyId`, messages and environments are client-supplied, not proof of origin. A public browser key does not identify which client used it.
+
 ### Shared query language
 
 | Key            | Semantics                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
@@ -42,7 +44,7 @@ All discovery lists and view lists use `limit` 1–100 (default 50) and `offset`
 | `range`        | Default `{"last":"1h"}`. Positive integer `m`, `h` or `d`, at most 30 days (including `7d`, `14d`, `30d`); or `{"start":"2026-01-01T00:00:00Z","end":"2026-01-02T00:00:00Z"}`. Absolute RFC3339 times require a zone and permit millisecond precision. Start inclusive, end exclusive; buckets and returned bounds use UTC. Filters use event time, not upload time. Retention deletes by receipt time (`RETENTION_DAYS`, default 30), so an old window can validly be empty. |
 | `where`        | One leaf `{field,op,value}`, `{and:[...]}`, `{or:[...]}` or `{not:predicate}`. At most 40 nodes, 16 children per Boolean list and six edges from the root. Scope/time bounds are outside this tree and cannot be negated.                                                                                                                                                                                                                                                     |
 
-Built-ins: `projectId`, `eventId`, `service`, `level` (`TRACE`, `DEBUG`, `LOG`, `WARN`, `ERROR`), `timestamp` (epoch milliseconds), `message`, `environment`, `release`, `traceId`, `sessionId`, `userId`. Use `fields.key` or `context.key` for custom attributes: up to four dotted keys matching `[A-Za-z_][A-Za-z0-9_-]{0,63}`. This syntax cannot address keys containing a literal dot; full detail still includes them. `eq`, `neq`, `lt`, `lte`, `gt`, `gte` compare like types only; booleans permit equality/inequality. Missing or mismatched fields are unknown, not zero or empty strings (including under `not`). String comparisons are case-sensitive; `contains`/`icontains` on `message` are literal substring searches (case folding follows database locale). Scalar strings are limited to 1,024 UTF-8 bytes.
+Built-ins: `projectId`, `eventId`, `ingestKeyId`, `level` (`TRACE`, `DEBUG`, `LOG`, `WARN`, `ERROR`), `timestamp` (epoch milliseconds), `message`, `environment`, `release`, `traceId`, `sessionId`, `userId`. Use `fields.key` or `context.key` for custom attributes: up to four dotted keys matching `[A-Za-z_][A-Za-z0-9_-]{0,63}`. This syntax cannot address keys containing a literal dot; full detail still includes them. `eq`, `neq`, `lt`, `lte`, `gt`, `gte` compare like types only; booleans permit equality/inequality. Missing or mismatched fields are unknown, not zero or empty strings (including under `not`). String comparisons are case-sensitive; `contains`/`icontains` on `message` are literal substring searches (case folding follows database locale). Scalar strings are limited to 1,024 UTF-8 bytes.
 
 `regex` on `message` is a case-sensitive PostgreSQL pattern with a 128-byte limit and a deliberately small syntax: ASCII words, space, `. , : / @ -`, `^ $`, character classes and `* + ?`; no escapes, groups, alternation, counted repeats or repeated quantifiers. Example: `^Error [0-9]+$`. Unsupported input yields a validation error. No operator accepts SQL.
 
@@ -83,7 +85,7 @@ The frontier uses the oldest active PostgreSQL transaction ID, not the greatest 
     "visualization": {
       "mode": "series",
       "style": "line",
-      "groupBy": ["service"],
+      "groupBy": ["environment"],
       "metric": { "op": "count" },
       "intervalSeconds": 3600
     }
@@ -93,10 +95,12 @@ The frontier uses the oldest active PostgreSQL transaction ID, not the greatest 
 
 `name` ≤256 UTF-8 bytes, definition ≤16 KiB. Visualization modes: `rows`, `groups`, `series`; chart styles: `bar`, `line`, `area`. `private` is owner-only. To share, save a `visibility:"link"` definition with **explicit project IDs**; share only a UI URL containing the opaque `viewId`. To freeze a relative window, create a separate view with `query.range` replaced by the absolute `range` returned with the displayed results. Recipient must authenticate, and must still have read access to **every** referenced project. The API returns 404 rather than disclosing an inaccessible definition; list results hide it too. Execute the returned definition as the **current caller**. Private “all projects” definitions remain rolling in both project scope and time. Never put tokens, query text or log contents in URLs.
 
+If an older view references the removed built-in `service` field, its definition remains readable but the affected queries return 400. The owner should replace the definition using an available field. Filters are not removed automatically, as doing so could broaden the query.
+
 ## Export a bounded result
 
 `POST /export` takes `{format:"csv"|"jsonl",mode?:"rows"|"groups",query,limit?,byteLimit?,columns?,...}`. Rows allow `sort`, groups allow `groupBy` and `metric`. Export is synchronous on the query pool. The response is JSON `{format,data,rowCount,byteCount,limited,limitReason,range}`; write the UTF-8 `data` string to a download. `limit` is 1–1,000 (default 100); `byteLimit` is 1–1,048,576 (default 262,144), counting CSV header and line terminators. `limitReason` is `rows`, `bytes`, or null. Never cut a record; a too-small limit can yield no rows. Execution budget exhaustion returns retryable 503, not a partial file.
 
-Raw JSONL defaults to full stored events. CSV defaults to `projectId,eventId,timestamp,level,service,message`; select ordered columns for either format. CSV quotes all cells, doubles embedded quotes, uses CRLF, and prefixes potentially executable spreadsheet strings with an apostrophe. Use JSONL for exact values. Group exports default to the grouping fields plus `value`; `columns` may select/reorder these. No export jobs or public downloads persist after the request.
+Raw JSONL defaults to full stored events. CSV defaults to `projectId,eventId,timestamp,level,message`; select ordered columns for either format. CSV quotes all cells, doubles embedded quotes, uses CRLF, and prefixes potentially executable spreadsheet strings with an apostrophe. Use JSONL for exact values. Group exports default to the grouping fields plus `value`; `columns` may select/reorder these. No export jobs or public downloads persist after the request.
 
 **UI boundary:** chart rendering, links/layout, browser sign-in, live sockets, dashboards, alerts and full trace waterfalls are not implemented. These HTTP interfaces, not MCP or direct database access, support browsing, query editing, saved views and downloads.

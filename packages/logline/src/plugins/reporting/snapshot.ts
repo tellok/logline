@@ -34,7 +34,6 @@ const standardKeys = [
   'details',
   'error',
   'nested',
-  'service',
   'environment',
   'release',
   'traceId',
@@ -94,7 +93,7 @@ function schemaKeys(extra: readonly string[]): ReadonlySet<string> {
 // Be conservative with authorization schemes, quoted JSON and spaces in credentials. Core masking handles heuristic
 // values too. Erase the rest of a sensitive assignment's line rather than exposing a trailing word in a password.
 function maskText(input: string): string {
-  const safe = input.replace(/\b(bearer|basic)\s+\S+/gi, '$1 ***');
+  const safe = input.replace(/ll(?:pk|pat)_[A-Za-z0-9_-]{43}/g, '***').replace(/\b(bearer|basic)\s+\S+/gi, '$1 ***');
   const assignment = /(?<![\w.-])([\w.-]+)["']?(?:\s*[:=：]\s*|\s+|$)/g;
   for (const match of safe.matchAll(assignment)) {
     if (match[1].length <= 64 && isSensitiveKey(match[1])) {

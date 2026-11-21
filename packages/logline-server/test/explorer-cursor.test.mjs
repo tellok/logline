@@ -57,7 +57,7 @@ test(
       const start = await poll(reader);
       held = await reader.connect();
       await held.query('BEGIN');
-      const insert = `INSERT INTO log_events(project_id,event_id,service,level,timestamp_ms,message,fields,context,event) VALUES ($1,$2,'demo','LOG',$3,'demo','{}','{}','{}')`;
+      const insert = `INSERT INTO log_events(project_id,event_id,level,timestamp_ms,message,fields,context,event) VALUES ($1,$2,'LOG',$3,'demo','{}','{}','{}')`;
       const t = Date.now() - 1000;
       await held.query(insert, [ids[0], 'allocated-first', t]);
       await replica.query(insert, [ids[1], 'committed-first', t]);

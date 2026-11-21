@@ -29,6 +29,17 @@ describe('reporting intake snapshot', () => {
     expect(createSnapshot(record(['second']), 'delivery-B')?.event.id).toBe('delivery-B');
   });
 
+  it('redacts a project key inside a DSN and does not capture service as built-in metadata', () => {
+    const key = `llpk_${'x'.repeat(43)}`;
+    const event = createSnapshot(record([`destination https://${key}@telemetry.example.org/project`]), 'dsn', {
+      service: 'omitted-source',
+      release: `key ${key}`,
+    })?.event;
+    expect(event?.message).toContain('https://***@telemetry.example.org/project');
+    expect(event?.context).not.toHaveProperty('service');
+    expect(JSON.stringify(event)).not.toContain(key);
+  });
+
   it('detaches and deeply freezes nested values, sanitized errors and explicit context at intake', () => {
     const error = new TypeError('synthetic failure');
     Object.defineProperty(error, 'stack', { value: 'TypeError: token=fixture\n    at demo:7' });

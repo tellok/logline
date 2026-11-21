@@ -2,7 +2,7 @@
 
 [简体中文](./server-mcp.zh-CN.md)
 
-Use `logline-server` as a remote **Streamable HTTP** MCP server. Set the client URL to `https://<your-host>/mcp`, and configure `Authorization: Bearer <user PAT>` in the client's secret-backed HTTP headers. Use HTTPS outside loopback. The token needs the `logs:read` operation scope; its owner needs read access to the relevant projects. The bootstrap administrator token cannot query logs. Do not use a browser client, embed credentials in a URL, or include tokens in tool arguments. To turn off the endpoint, set `LOGLINE_MCP_ENABLED=false` on every replica.
+Use `logline-server` as a remote **Streamable HTTP** MCP server. Set the client URL to `https://<your-host>/mcp`, and configure `Authorization: Bearer <user PAT>` in the client's secret-backed HTTP headers. Use HTTPS outside loopback. The token needs the `logs:read` operation scope; its owner needs read access to the relevant projects. Project ingestion keys and the bootstrap administrator token cannot query logs. Authorized readers can filter on `ingestKeyId`, the ID (not the secret) of the key used to submit the event; it may be `null` for historical records. Do not use a browser client, embed credentials in a URL, or include tokens in tool arguments. To turn off the endpoint, set `LOGLINE_MCP_ENABLED=false` on every replica.
 
 ## Connect
 
@@ -15,7 +15,7 @@ Use `logline-server` as a remote **Streamable HTTP** MCP server. Set the client 
 | Tool                                  | Use                                                                                                                                     |
 | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | `logline_projects`                    | Discover current readable projects with IDs, slugs and display names. Use `limit`/`offset` for paging.                                  |
-| `logline_selectors`, `logline_fields` | Inspect service/environment selectors or field names/types for a query and time window.                                                 |
+| `logline_selectors`, `logline_fields` | Inspect project/environment pairs or field names/types for a query and time window.                                                     |
 | `logline_rows`                        | Search by time, severity, message or structured fields. Optional columns, sort (`asc`/`desc`), cursor, limit.                           |
 | `logline_series`, `logline_groups`    | Bucketed or grouped count, sum or average under the same scope and filter. Group by field names; for series, specify `intervalSeconds`. |
 | `logline_detail`, `logline_context`   | Fetch an event by `{projectId,eventId}` or related events with `mode` = `nearby`, `trace` or `session`.                                 |
@@ -40,7 +40,7 @@ For example, after discovery replace `PROJECT_ID` with the immutable ID (not the
           ]
         }
       },
-      "columns": ["eventId", "timestamp", "service", "message"],
+      "columns": ["eventId", "timestamp", "environment", "message"],
       "limit": 5
     }
   }

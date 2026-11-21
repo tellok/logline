@@ -6,6 +6,7 @@ configMapGenerator:
     literals:
       - PORT=4318
       - LOGLINE_MCP_ENABLED=false
+      - LOGLINE_INGEST_ORIGINS=
       - INGEST_CONCURRENCY=12
       - QUERY_CONCURRENCY=4
       - PROJECT_EVENTS_PER_MINUTE=60000

@@ -14,7 +14,8 @@ const resources = new Map([
 ]);
 const tokenFields =
   'token_id AS "tokenId", user_id AS "userId", scopes, label, issued_at AS "issuedAt", revoked_at AS "revokedAt"';
-const operations = ['logs:read', 'logs:write'];
+const keyFields =
+  'key_id AS "keyId", project_id AS "projectId", name, issued_at AS "issuedAt", revoked_at AS "revokedAt"';
 
 function object(body, allowed, required = []) {
   if (
@@ -44,15 +45,9 @@ function slug(value) {
   return value;
 }
 function scopes(values) {
-  if (
-    !Array.isArray(values) ||
-    !values.length ||
-    values.length > 2 ||
-    !values.every((v) => operations.includes(v)) ||
-    new Set(values).size !== values.length
-  )
-    throw invalid('Expected a nonempty, unique subset of logs:read and logs:write');
-  return [...values].sort();
+  if (!Array.isArray(values) || values.length !== 1 || values[0] !== 'logs:read')
+    throw invalid('Expected ["logs:read"]');
+  return values;
 }
 function checkId(id) {
   if (!validId(id)) throw invalid('Expected a UUID');
@@ -209,6 +204,37 @@ async function tokens({ db, method, body, params }, userId, tokenId) {
   throw methodError();
 }
 
+/** Manage independent write-only credentials; never serialize the stored digest. */
+async function projectKeys({ db, method, body, params }, projectId, keyId) {
+  if (method === 'GET' && !keyId) {
+    await resource(db, 'projects', projectId);
+    return [
+      200,
+      await list(db, params, `SELECT ${keyFields} FROM project_keys WHERE project_id=$1`, [projectId], 'keyId'),
+    ];
+  }
+  checkedParams(params, []);
+  if (method === 'POST' && !keyId) {
+    const label = name(object(body, ['name'], ['name']).name);
+    const key = 'llpk_' + randomBytes(32).toString('base64url');
+    const metadata = await one(
+      db,
+      `INSERT INTO project_keys(project_id,name,secret_digest) VALUES ($1,$2,$3) RETURNING ${keyFields}`,
+      [projectId, label, digest(key)],
+    );
+    return [201, { ...metadata, key }];
+  }
+  if (method === 'DELETE' && keyId) {
+    await one(
+      db,
+      'UPDATE project_keys SET revoked_at=coalesce(revoked_at,now()) WHERE project_id=$1 AND key_id=$2 RETURNING key_id',
+      [projectId, checkId(keyId)],
+    );
+    return [204];
+  }
+  throw methodError();
+}
+
 async function access({ db, method, params }, userId, projectId) {
   if (method !== 'GET') throw methodError();
   await resource(db, 'users', userId);
@@ -254,6 +280,7 @@ export async function handleAdmin({ req, res, url, db, body, send, adminToken })
     if (!route) result = await entity(ctx, type, id);
     else if (relations.has(`${type}/${route}`)) result = await relation(ctx, type, id, route, otherId);
     else if (type === 'users' && route === 'tokens') result = await tokens(ctx, id, otherId);
+    else if (type === 'projects' && route === 'keys') result = await projectKeys(ctx, id, otherId);
     else if (type === 'users' && route === 'access') result = await access(ctx, id, otherId);
     else throw missing();
   } catch (error) {

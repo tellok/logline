@@ -5,7 +5,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import pg from 'pg';
 
 // Use the public HTTP API for fixtures as well as assertions. The only privileged DB
-// operations are test schema isolation and intentionally delaying a query to its budget.
+// operations are schema isolation, seeding a legacy record, and intentionally delaying a query.
 test(
   'Explorer HTTP contracts against PostgreSQL',
   { skip: !process.env.TEST_DATABASE_URL, timeout: 60000 },
@@ -44,12 +44,15 @@ test(
         return { userId, secret };
       };
       const actor = await person('Synthetic Reader', ['logs:read']);
-      const writer = await person('Synthetic Writer', ['logs:write']);
       const guest = await person('Synthetic Recipient', ['logs:read']);
       const createProject = async (slug) => (await admin('POST', 'projects', { slug, displayName: slug })).projectId;
       const [alpha, beta, hidden] = await Promise.all(['alpha', 'beta', 'hidden'].map(createProject));
       const grant = (id, user, permissions) => admin('PUT', `projects/${id}/members/${user.userId}`, { permissions });
-      for (const id of [alpha, beta, hidden]) await grant(id, writer, ['logs:write']);
+      const keys = new Map();
+      for (const id of [alpha, beta, hidden]) {
+        const key = await admin('POST', `projects/${id}/keys`, { name: 'Synthetic uploader' });
+        keys.set(id, key);
+      }
       for (const id of [alpha, beta]) await grant(id, actor, ['logs:read']);
       await grant(alpha, guest, ['logs:read']);
       const http = (method, path, body, status, token = actor.secret) =>
@@ -66,7 +69,7 @@ test(
         ...extra,
       });
       const upload = async (projectId, events) => {
-        const ack = await call(writer.secret, 'POST', 'logs', { projectId, service: 'synthetic-service', events });
+        const ack = await call(keys.get(projectId).key, 'POST', 'logs', { projectId, events });
         assert.deepEqual(
           ack.acceptedEventIds,
           events.map((e) => e.id),
@@ -95,15 +98,21 @@ test(
       const projected = ['projectId', 'eventId', 'fields.duration'];
 
       await t.test('discovery, typed searches, tied timestamp pagination and context honor scope', async () => {
+        await http('GET', 'projects', undefined, 401, keys.get(alpha).key);
         const projects = await http('GET', 'projects');
         assert.deepEqual(new Set(projects.items.map((p) => p.projectId)), new Set([alpha, beta]));
         const selectors = await post('selectors', {});
-        assert.deepEqual(new Set(selectors.items.map((p) => p.environment)), new Set(['sample']));
+        assert.deepEqual(
+          selectors.items,
+          [alpha, beta].sort().map((projectId) => ({ projectId, environment: 'sample' })),
+        );
         const fields = await post('fields', {});
         assert.equal(
           fields.items.some((f) => f.name === 'fields.privateOnly'),
           false,
         );
+        assert.ok(!fields.items.some((f) => f.name === 'service'));
+        await post('rows', { query, columns: ['service'] }, 400);
         const duration = fields.items.find((f) => f.name === 'fields.duration');
         assert.deepEqual(duration.types, ['number', 'string']);
         assert.ok(duration.operators.includes('gte'));
@@ -124,7 +133,18 @@ test(
         };
         assert.equal((await post('rows', { query: narrow })).items.length, 2);
         const target = { projectId: alpha, eventId: 'a1' };
-        assert.equal((await post('detail', target)).item.message, 'Timeout ONE');
+        const { item } = await post('detail', target);
+        assert.equal(item.message, 'Timeout ONE');
+        assert.equal(item.ingestKeyId, keys.get(alpha).keyId);
+        const channel = await post('rows', {
+          query: { ...all, where: { field: 'ingestKeyId', op: 'eq', value: keys.get(beta).keyId } },
+          columns: ['eventId', 'ingestKeyId'],
+          sort: 'asc',
+        });
+        assert.deepEqual(
+          channel.items,
+          ['b1', 'b2'].map((eventId) => ({ eventId, ingestKeyId: keys.get(beta).keyId })),
+        );
         for (const mode of ['trace', 'session', 'nearby']) {
           const context = await post('context', { ...target, mode, limit: 1 });
           assert.equal(context.limited, true);
@@ -149,6 +169,8 @@ test(
           (await post('groups', { ...spec, metric: { op: 'avg', field: 'fields.duration' } })).items[0].value,
           22 / 3,
         );
+        const defaults = await post('export', { query, format: 'csv', limit: 1 });
+        assert.equal(defaults.data.split('\r\n')[0], '"projectId","eventId","timestamp","level","message"');
         const csv = await post('export', {
           query,
           format: 'csv',
@@ -165,6 +187,22 @@ test(
         assert.equal(bytes.limitReason, 'bytes');
         assert.equal(bytes.rowCount, 0);
         assert.equal(bytes.byteCount, 0);
+
+        // A v1 event could claim an arbitrary key ID in its raw JSON; no credential was recorded for it.
+        const forged = keys.get(alpha).keyId;
+        await pool.query(
+          `INSERT INTO ${schema}.log_events(project_id,event_id,level,timestamp_ms,message,fields,context,event)
+           VALUES ($1,'legacy','LOG',$2,'old','{}','{}',$3::jsonb)`,
+          [alpha, time, JSON.stringify({ ingestKeyId: forged, fields: { ingestKeyId: forged } })],
+        );
+        const legacyQuery = { projectIds: [alpha], where: { field: 'eventId', op: 'eq', value: 'legacy' } };
+        const { item } = await post('detail', { projectId: alpha, eventId: 'legacy' });
+        assert.equal(item.ingestKeyId, null);
+        assert.equal(item.fields.ingestKeyId, forged);
+        const raw = await post('export', { query: legacyQuery, format: 'jsonl' });
+        assert.equal(JSON.parse(raw.data).ingestKeyId, null);
+        const projected = await post('rows', { query: legacyQuery, columns: ['ingestKeyId'] });
+        assert.deepEqual(projected.items, [{ ingestKeyId: null }]);
       });
 
       await t.test('refresh resumes a bounded page and picks up late-arriving events without replay', async () => {

@@ -53,12 +53,39 @@ export async function migrate(db) {
       'CREATE TABLE IF NOT EXISTS logline_schema_versions (version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())',
     );
     const { rows } = await client.query('SELECT version FROM logline_schema_versions ORDER BY version DESC LIMIT 1');
-    if (rows.length) {
-      if (rows[0].version !== 1) throw Error('Unsupported database schema version');
-      return;
+    const version = rows[0]?.version ?? 0;
+    if (version === 2) return;
+    if (version !== 0 && version !== 1) throw Error('Unsupported database schema version');
+    if (version === 1) {
+      // Keep events, original payloads and identities; the old envelope's service label is retired.
+      await client.query('ALTER TABLE log_events DROP COLUMN service');
+      // Keep the PAT catalog (including write-only token metadata), but never upgrade write to read.
+      for (const [table, column] of [
+        ['user_tokens', 'scopes'],
+        ['direct_grants', 'permissions'],
+        ['team_grants', 'permissions'],
+      ]) {
+        await client.query(`ALTER TABLE ${table} DROP CONSTRAINT ${table}_${column}_check`);
+        if (table === 'user_tokens') {
+          await client.query(
+            `UPDATE user_tokens SET scopes='{}', revoked_at=coalesce(revoked_at,now()) WHERE NOT ('logs:read'=ANY(scopes))`,
+          );
+        } else await client.query(`DELETE FROM ${table} WHERE NOT ('logs:read'=ANY(${column}))`);
+        await client.query(
+          `UPDATE ${table} SET ${column}=ARRAY['logs:read'] WHERE 'logs:read'=ANY(${column}) AND ${column}<>ARRAY['logs:read']`,
+        );
+        const check =
+          table === 'user_tokens'
+            ? "scopes=ARRAY['logs:read'] OR (scopes='{}' AND revoked_at IS NOT NULL)"
+            : "permissions=ARRAY['logs:read']";
+        await client.query(`ALTER TABLE ${table} ADD CONSTRAINT ${table}_${column}_check CHECK (${check})`);
+      }
     }
     for (const sql of migrations) await client.query(sql);
-    await client.query('INSERT INTO logline_schema_versions (version) VALUES (1)');
+    // Historical records predate key attribution. Do not infer or backfill an identity.
+    if (version === 1)
+      await client.query('ALTER TABLE log_events ADD COLUMN ingest_key_id uuid REFERENCES project_keys(key_id)');
+    await client.query('INSERT INTO logline_schema_versions (version) VALUES (2)');
   });
 }
 

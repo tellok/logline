@@ -2,7 +2,7 @@
 
 [English](./server-mcp.md)
 
-将 `logline-server` 作为远程 **Streamable HTTP** MCP 服务使用。在客户端配置 `https://<主机名>/mcp`，并通过其密钥管理功能向每次请求添加 `Authorization: Bearer <用户 PAT>`。除本机回环地址外应使用 HTTPS。令牌需要 `logs:read` 操作范围，令牌所属用户还需拥有相应项目的读取权限。部署管理员令牌不可用于查询日志。不要在浏览器中连接、将凭据写入 URL 或作为工具参数传递。需要禁用时，在所有副本设置 `LOGLINE_MCP_ENABLED=false`。
+将 `logline-server` 作为远程 **Streamable HTTP** MCP 服务使用。在客户端配置 `https://<主机名>/mcp`，并通过其密钥管理功能向每次请求添加 `Authorization: Bearer <用户 PAT>`。除本机回环地址外应使用 HTTPS。令牌需要 `logs:read` 操作范围，令牌所属用户还需拥有相应项目的读取权限。项目上报密钥和部署管理员令牌均不可用于查询日志。授权读者可用 `ingestKeyId` 筛选实际使用的上报密钥 ID；它不包含密钥本体，历史记录可能为 `null`。不要在浏览器中连接、将凭据写入 URL 或作为工具参数传递。需要禁用时，在所有副本设置 `LOGLINE_MCP_ENABLED=false`。
 
 ## 连接步骤
 
@@ -15,7 +15,7 @@
 | 工具                                  | 用途                                                                                                       |
 | ------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `logline_projects`                    | 列出当前可读项目的 ID、slug 和显示名。使用 `limit`、`offset` 分页。                                        |
-| `logline_selectors`、`logline_fields` | 查看指定查询和时间窗内的服务、环境、字段名称及类型。                                                       |
+| `logline_selectors`、`logline_fields` | 查看指定查询和时间窗内的项目与环境组合，或字段名称及类型。                                                 |
 | `logline_rows`                        | 按时间、级别、消息或结构化字段检索；可指定列、排序（`asc`/`desc`）、游标和数量。                           |
 | `logline_series`、`logline_groups`    | 在相同权限和过滤条件下计算分桶或分组的计数、总和、平均值。按字段名分组；时间序列可指定 `intervalSeconds`。 |
 | `logline_detail`、`logline_context`   | 用 `{projectId,eventId}` 获取事件；上下文的 `mode` 可取 `nearby`、`trace` 或 `session`。                   |
@@ -40,7 +40,7 @@
           ]
         }
       },
-      "columns": ["eventId", "timestamp", "service", "message"],
+      "columns": ["eventId", "timestamp", "environment", "message"],
       "limit": 5
     }
   }

@@ -18,23 +18,20 @@ pnpm add logline@beta
 
 ## 上传到自托管服务
 
-同时安装同一 beta 版本的 `logline@beta` 和 `logserver-reporter@beta`。仅导入 Logline 不会发送网络请求。每个目的地单独创建 reporter，配置部署地址和不可变的项目 ID。以下示例运行在可信应用进程内：
+同时安装同一 beta 版本的 `logline@beta` 和 `logserver-reporter@beta`。仅导入 Logline 不会发送网络请求。每个目的地单独创建 reporter，只需配置该项目的 DSN。以下示例运行在可信应用进程内：
 
 ```ts
 import { configureLogline } from 'logline';
 import { createLoglineServerReporter } from 'logserver-reporter';
 
 const reporter = createLoglineServerReporter({
-  baseUrl: 'https://telemetry.example.org/logline',
-  projectId: process.env.LOGLINE_PROJECT_ID!,
-  service: 'checkout',
-  token: () => process.env.LOGLINE_WRITE_TOKEN!,
+  dsn: process.env.LOGLINE_DSN!,
   reporting: { sampleRate: 0.1, levelSampleRates: { ERROR: 1 } },
 });
 configureLogline({ plugins: [reporter] });
 ```
 
-使用仅具有该项目写入权限的服务身份，勿使用管理员令牌。不要将私有 PAT 打包到浏览器代码中；请通过经过认证的同源应用网关转发。没有默认云端地址，不持久化待发队列，也不上传 IndexedDB 历史记录。参阅[上报契约](./docs/reporting.zh-CN.md)、[写入接口](./docs/server-ingestion.zh-CN.md)、[管理接口](./docs/server-admin.zh-CN.md)、[日志查询](./docs/server-explorer.zh-CN.md)、[MCP 工具](./docs/server-mcp.zh-CN.md)和[部署及性能指南](./docs/server-operations.zh-CN.md)。
+通过管理接口创建项目上报密钥，再构造 `https://<密钥>@<域名>[/部署前缀]/<项目 UUID>`。DSN 只允许向绑定项目写入，不依赖成员身份。浏览器端的 DSN 是公开的，拿到它的人可以提交事件；后端请用独立密钥，可信审计事件应由后端生成。浏览器请求带有 Origin 时，需在服务端配置 `LOGLINE_INGEST_ORIGINS`。没有默认云端地址，不持久化待发队列，也不上传 IndexedDB 历史记录。参阅[上报契约](./docs/reporting.zh-CN.md)、[写入接口](./docs/server-ingestion.zh-CN.md)、[管理接口](./docs/server-admin.zh-CN.md)、[日志查询](./docs/server-explorer.zh-CN.md)、[MCP 工具](./docs/server-mcp.zh-CN.md)和[部署及性能指南](./docs/server-operations.zh-CN.md)。
 
 ## 迁移与单实例
 

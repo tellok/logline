@@ -30,7 +30,7 @@ async function exportRows(s, b) {
     )
       fail('Invalid aggregate columns');
   } else {
-    if (format === 'csv') names ??= ['projectId', 'eventId', 'timestamp', 'level', 'service', 'message'];
+    if (format === 'csv') names ??= ['projectId', 'eventId', 'timestamp', 'level', 'message'];
     columns(names);
   }
   let data = '',

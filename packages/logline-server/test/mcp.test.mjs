@@ -112,9 +112,9 @@ test(
       status: 201,
       body: { scopes: ['logs:read'] },
     });
-    const { secret: writer } = await manage(`users/${userId}/tokens`, {
+    const { key: ingestKey } = await manage(`projects/${projectId}/keys`, {
       status: 201,
-      body: { scopes: ['logs:write'] },
+      body: { name: 'Synthetic uploader' },
     });
     const mcp = (body, options = {}) => request('/mcp', { token: pat, body, replica: 1, ...options });
     const invoke = async (name, args) => JSON.parse((await mcp(call(name, args))).result.content[0].text);
@@ -129,13 +129,13 @@ test(
       },
     };
     await mcp(initialize, { token: admin, status: 401 });
-    await mcp(rpc('tools/list'), { token: writer, status: 403 });
+    await mcp(rpc('tools/list'), { token: ingestKey, status: 401 });
     assert.deepEqual((await invoke('projects')).items, []);
     await mcp(call('rows', { query }), { status: 403 });
     await manage(`projects/${projectId}/teams/${teamId}`, {
       method: 'PUT',
       status: 204,
-      body: { permissions: ['logs:read', 'logs:write'] },
+      body: { permissions: ['logs:read'] },
     });
     await manage(`teams/${teamId}/members/${userId}`, { method: 'PUT', status: 204 });
     assert.equal((await invoke('projects')).items[0].projectId, projectId);
@@ -148,7 +148,7 @@ test(
       context: { environment: 'test', traceId: 'synthetic-trace', sessionId: 'synthetic-session' },
       level,
     }));
-    await request('/api/v1/logs', { token: writer, body: { projectId, service: 'synthetic-service', events } });
+    await request('/api/v1/logs', { token: ingestKey, body: { projectId, events } });
     const absolute = {
       ...query,
       range: { start: new Date(timestamp - 60000).toISOString(), end: new Date(timestamp + 60000).toISOString() },
@@ -158,11 +158,11 @@ test(
     assert.deepEqual(rows, await request('/api/v1/explorer/rows', { token: pat, body: args }));
     assert.equal(rows.items.length, 1);
     assert.equal(rows.items[0].message, 'Upstream Timeout');
-    assert.ok((await invoke('selectors', { query })).items.some((row) => row.service === 'synthetic-service'));
+    assert.deepEqual((await invoke('selectors', { query })).items, [{ projectId, environment: 'test' }]);
     assert.ok((await invoke('fields', { query })).items.length > 0);
     for (const name of ['series', 'groups'])
       assert.ok(
-        (await invoke(name, { query, groupBy: ['service'], metric: { op: 'count' } })).items.some(
+        (await invoke(name, { query, groupBy: ['environment'], metric: { op: 'count' } })).items.some(
           (row) => row.value === 1,
         ),
       );
@@ -180,9 +180,10 @@ test(
       level: 'LOG',
       timestamp,
       message: 'x'.repeat(60000),
+      context: { environment: 'synthetic-padding' },
     }));
-    await request('/api/v1/logs', { token: writer, body: { projectId, service: 'synthetic-padding', events: padded } });
-    const filter = { projectIds: [projectId], where: { field: 'service', op: 'eq', value: 'synthetic-padding' } };
+    await request('/api/v1/logs', { token: ingestKey, body: { projectId, events: padded } });
+    const filter = { projectIds: [projectId], where: { field: 'environment', op: 'eq', value: 'synthetic-padding' } };
     const oversized = (await mcp(call('rows', { query: filter }))).result;
     assert.equal(oversized.isError, true);
     assert.match(oversized.content[0].text, /512 KiB/);

@@ -2,16 +2,19 @@
 
 [English](./server-ingestion.md)
 
-使用服务用户的 `logs:write` PAT，并授予该用户目标项目的写权限。不要将部署管理员令牌用于上报，也不要将长期 PAT 嵌入公开的浏览器代码。入口应启用 TLS 并保护数据库连接。本服务不提供浏览器登录。
+使用绑定到目标项目的命名[项目密钥](./server-admin.zh-CN.md)，只允许写入。PAT 和管理员凭据都不能上传。公开客户端的 DSN 仅标识项目，不能证明事件来源可信：获取 DSN 的人可以提交事件，但不能读取。不要暴露后端密钥；项目的所有密钥共用配额。入口应启用 TLS 并保护数据库连接。本服务不提供浏览器登录。
+
+reporter 接受 `https://<key>@<host>[/prefix]/<projectUUID>`（仅回环地址可使用 HTTP）。实际请求发送至 `<部署根路径>/api/v1/logs`，不在 URL 中携带凭据。不要在日志中记录 DSN 或 Authorization 请求头。
+
+**浏览器上报：** 将 `LOGLINE_INGEST_ORIGINS` 设为逗号分隔的精确浏览器 Origin 列表，例如 `https://app.example.org`。默认拒绝所有携带 `Origin` 的写入请求；不带 `Origin` 的后端请求不受影响。上传路由支持 `OPTIONS` 预检，允许 `POST` 携带 `Authorization` 和 `Content-Type`。Origin 白名单只是浏览器策略，不是来源鉴真，也不能保证阻止垃圾上报。
 
 ## 批量上报
 
-`POST /api/v1/logs`，请求头为 `Content-Type: application/json` 和 `Authorization: Bearer <PAT>`：
+`POST /api/v1/logs`，请求头为 `Content-Type: application/json` 和 `Authorization: Bearer <project-key>`：
 
 ```json
 {
   "projectId": "00000000-0000-4000-8000-000000000001",
-  "service": "example-api",
   "events": [
     {
       "id": "example-request-01",
@@ -25,7 +28,7 @@
 }
 ```
 
-使用**服务端生成的项目 UUID** 而不是 slug。服务名与事件 ID 均为非空白字符串，UTF-8 编码不超过 128 字节。每批至少一个事件，ID 不得重复。级别为 `TRACE`、`DEBUG`、`LOG`、`WARN`、`ERROR`。时间戳为 Unix 毫秒整数，范围 `[0,253402300799999]`；消息为字符串。可选 `fields` 和 `context` 均为 JSON 对象。若提供 `context.environment`、`release`、`traceId`、`sessionId`、`userId`，值必须为不超过 1,024 字节的字符串。保留其他事件属性。每个完整事件序列化后最多 65,536 UTF-8 字节，嵌套深度不超过 24，键名不超过 1,024 字节。拒绝非有限数值、NUL 和无效 Unicode。使用未压缩的 UTF-8 JSON。
+使用**服务端生成的项目 UUID** 而不是 slug。请求体仅接受 `projectId` 和 `events`，发送旧版 `service` 字段会被拒绝。事件 ID 为非空白字符串，UTF-8 编码不超过 128 字节。每批至少一个事件，ID 不得重复。级别为 `TRACE`、`DEBUG`、`LOG`、`WARN`、`ERROR`。时间戳为 Unix 毫秒整数，范围 `[0,253402300799999]`；消息为字符串。可选 `fields` 和 `context` 均为 JSON 对象。若提供 `context.environment`、`release`、`traceId`、`sessionId`、`userId`，值必须为不超过 1,024 字节的字符串。保留其他事件属性，但顶层 `ingestKeyId` 为保留名：客户端提供此属性时该事件会被拒绝。服务端记录首次实际提交该事件的项目密钥 ID（不是原始密钥）。重放不会覆盖来源；从 v1 迁移的记录不标记密钥 ID。每个完整事件序列化后最多 65,536 UTF-8 字节，嵌套深度不超过 24，键名不超过 1,024 字节。拒绝非有限数值、NUL 和无效 Unicode。使用未压缩的 UTF-8 JSON。
 
 `200` 响应将每个输入 ID 分类，不保证顺序：
 
@@ -34,7 +37,7 @@
 ```
 
 - **已接受**表示已提交到 PostgreSQL，提交后新发起的授权查询可立即在主库读到。重试已有 `(projectId,id)` 时不覆盖原数据，也不消耗新增配额。为事件分配稳定且唯一的 ID，并使用原始数据重试。
-- 对能识别 ID 的非法事件**永久拒绝**，同批其他有效事件仍可提交。缺失或重复 ID 时整批 `400`；请求体或事件数量超限时 `413`。`401` 表示凭证缺失或无效；`403` 表示缺少操作范围或项目权限。非确认类错误格式为 `{"error":{"code":"…","message":"…"}}`。
+- 对能识别 ID 的非法事件**永久拒绝**，同批其他有效事件仍可提交。缺失或重复 ID 时整批 `400`；请求体或事件数量超限时 `413`。`401` 表示凭据缺失、无效、已撤销或类型错误；`403` 表示密钥有效但绑定的是其他项目。非确认类错误格式为 `{"error":{"code":"…","message":"…"}}`。
 - `429` 表示该项目剩余的自然分钟事件数或字节配额无法容纳**全部新增有效事件**。响应区分已接受的重复 ID、可重试的新 ID、永久拒绝的 ID，并含 `retryAfterMs`；`Retry-After` 以秒向上取整。批量大小应小于整分钟配额。`503` 带 `Retry-After`，表示存储暂时不可用、容量不足或正在退出；使用退避与抖动重试未确认批次。原响应丢失或提交结果不明时允许重试，在数据仍被保留时不会生成第二行。
 - 写入直接提交，**没有服务器端 flush 路由**、内存交付队列、异步索引器或需等待的消息偏移量。客户端 flush 只清空自身待发送队列。入口 Pod 丢失不影响已确认的数据；数据库或节点故障下的耐久性取决于 PostgreSQL 的 fsync、持久卷、复制和备份。不要使用临时数据库，也不要向异步只读副本查询权限或已提交事件。
 
@@ -45,7 +48,7 @@
 | 设置                                                    |            默认值 | 用途                                                                                      |
 | ------------------------------------------------------- | ----------------: | ----------------------------------------------------------------------------------------- |
 | `DATABASE_URL`                                          |              必填 | PostgreSQL 主库 URL；PostgreSQL 16/17（集成测试使用 16，部署使用 17）                     |
-| `LOGLINE_ADMIN_TOKEN`                                   |              必填 | 随机部署密钥，至少 32 个非空格可打印 ASCII 字节，不含逗号，不以 `llpat_` 开头             |
+| `LOGLINE_ADMIN_TOKEN`                                   |              必填 | 随机部署密钥，至少 32 个非空格可打印 ASCII 字节，不含逗号，不以 `llpat_` 或 `llpk_` 开头  |
 | `HOST`、`PORT`                                          | `0.0.0.0`、`4318` | HTTP 监听地址                                                                             |
 | `MAX_BODY_BYTES`、`MAX_BATCH_EVENTS`                    |      1048576、500 | 请求体字节数（也限制管理和查询请求体）、每批日志数                                        |
 | `PROJECT_EVENTS_PER_MINUTE`、`PROJECT_BYTES_PER_MINUTE` |   60000、67108864 | 按数据库时钟自然分钟计算的每项目新增事件数与序列化 UTF-8 字节数，不代表线上流量或磁盘大小 |
