@@ -165,10 +165,11 @@ export const setTag = (key: string, value: string): LoglineConfig => {
 
 /**
  * Merge several global tags into the existing set.
+ * Normalization runs before merging so hostile inputs cannot throw here.
  * @param tags Flat string pairs to merge.
  */
 export const setTags = (tags: LogTags): LoglineConfig => {
-  return updateLoglineConfig({ tags: { ...configState.tags, ...tags } });
+  return updateLoglineConfig({ tags: { ...configState.tags, ...normalizeTags(tags) } });
 };
 
 /**

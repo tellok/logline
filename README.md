@@ -59,7 +59,7 @@ setTags({ experiment: 'one-click', region: 'eu' });
 removeTag('experiment');
 ```
 
-For tags that apply to just one code path, wrap the work in `withScope`, Sentry-style. Records logged inside the callback merge scope tags between global and per-call tags; nested scopes apply outer-to-inner with inner entries winning. A synchronous callback detaches its scope on return or throw; an async callback keeps its scope until the returned promise settles (concurrent async scopes may share tags, as browsers lack AsyncLocalStorage).
+For tags that apply to just one code path, wrap the work in `withScope`, Sentry-style. Records logged inside the callback merge scope tags between global and per-call tags; nested scopes apply outer-to-inner with inner entries winning. A synchronous callback detaches its scope on return or throw; an async callback keeps its scope until the returned promise settles (concurrent async scopes may share tags, as browsers lack AsyncLocalStorage). Tag APIs never throw into application code: invalid or hostile input is dropped silently, while exceptions raised by your own callback propagate unchanged.
 
 ```ts
 import { LOG, withScope } from 'logline';

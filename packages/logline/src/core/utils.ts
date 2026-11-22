@@ -12,22 +12,27 @@ const MAX_TAG_VALUE_LENGTH = 256;
  * Normalize user-supplied tags into a flat, masked, queryable map.
  * Invalid keys, non-string or empty values, and entries beyond the cap are dropped.
  * Values pass through masking; sensitive key names collapse to '***'.
+ * Never throws: exotic inputs such as Proxies with throwing traps yield undefined.
  * @param input Candidate tag map from a log call or configuration.
  * @returns Normalized tags, or undefined when nothing survives.
  */
 export const normalizeTags = (input: unknown): LogTags | undefined => {
-  if (typeof input !== 'object' || input === null || Array.isArray(input)) return undefined;
-  const out: Record<string, string> = {};
-  for (const key of Object.keys(input)) {
-    if (Object.keys(out).length >= MAX_TAGS) break;
-    if (!TAG_KEY_PATTERN.test(key)) continue;
-    const descriptor = Object.getOwnPropertyDescriptor(input, key);
-    if (!descriptor || !('value' in descriptor)) continue;
-    const value = descriptor.value;
-    if (typeof value !== 'string' || value.length === 0) continue;
-    out[key] = isSensitiveKey(key) ? '***' : maskString(value.slice(0, MAX_TAG_VALUE_LENGTH));
+  try {
+    if (typeof input !== 'object' || input === null || Array.isArray(input)) return undefined;
+    const out: Record<string, string> = {};
+    for (const key of Object.keys(input)) {
+      if (Object.keys(out).length >= MAX_TAGS) break;
+      if (!TAG_KEY_PATTERN.test(key)) continue;
+      const descriptor = Object.getOwnPropertyDescriptor(input, key);
+      if (!descriptor || !('value' in descriptor)) continue;
+      const value = descriptor.value;
+      if (typeof value !== 'string' || value.length === 0) continue;
+      out[key] = isSensitiveKey(key) ? '***' : maskString(value.slice(0, MAX_TAG_VALUE_LENGTH));
+    }
+    return Object.keys(out).length > 0 ? Object.freeze(out) : undefined;
+  } catch {
+    return undefined;
   }
-  return Object.keys(out).length > 0 ? Object.freeze(out) : undefined;
 };
 
 /**

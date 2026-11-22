@@ -86,6 +86,24 @@ describe('withScope', () => {
     });
   });
 
+  it('never lets hostile tag inputs break the callback', () => {
+    const hostile = new Proxy(
+      {},
+      {
+        ownKeys() {
+          throw new Error('trap fired');
+        },
+      },
+    );
+    const result = withScope((scope) => {
+      scope.setTags(hostile);
+      scope.setTag('ok', 'fine');
+      return 'business result';
+    });
+    expect(result).toBe('business result');
+    expect(resolveScopeTags()).toBeUndefined();
+  });
+
   it('feeds the record merge chain between global and per-call tags', () => {
     withScope((scope) => {
       scope.setTags({ shared: 'scope', scopeOnly: 'yes' });

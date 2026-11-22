@@ -76,6 +76,24 @@ describe('normalizeTags', () => {
     const tags = normalizeTags({ app: 'shop' });
     expect(tags && Object.isFrozen(tags)).toBe(true);
   });
+
+  it('never throws on hostile inputs such as throwing Proxies', () => {
+    const hostile = new Proxy(
+      {},
+      {
+        ownKeys() {
+          throw new Error('trap fired');
+        },
+      },
+    );
+    expect(normalizeTags(hostile)).toBeUndefined();
+    expect(() => {
+      resetLoglineConfig();
+      setTags(hostile);
+    }).not.toThrow();
+    expect(getLoglineConfig().tags).toBeUndefined();
+    resetLoglineConfig();
+  });
 });
 
 describe('mergeTags', () => {

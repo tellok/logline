@@ -153,7 +153,7 @@ setTags({ experiment: 'one-click', region: 'eu' });
 removeTag('experiment');
 ```
 
-如果标签只应作用于某段代码路径，可以用 Sentry 风格的 `withScope` 包裹。回调内记录的日志会把 scope 标签合并到全局标签与单次调用标签之间；嵌套 scope 按外层到内层生效，冲突时内层优先。同步回调在返回或抛错时解除 scope；async 回调的 scope 会保持到返回的 promise 结束（浏览器没有 AsyncLocalStorage，并发的异步 scope 之间可能共享标签）。
+如果标签只应作用于某段代码路径，可以用 Sentry 风格的 `withScope` 包裹。回调内记录的日志会把 scope 标签合并到全局标签与单次调用标签之间；嵌套 scope 按外层到内层生效，冲突时内层优先。同步回调在返回或抛错时解除 scope；async 回调的 scope 会保持到返回的 promise 结束（浏览器没有 AsyncLocalStorage，并发的异步 scope 之间可能共享标签）。标签 API 不会向业务代码抛异常：非法输入会被静默丢弃，而回调自身抛出的异常会原样传播。
 
 ```ts
 import { LOG, withScope } from 'logline';
