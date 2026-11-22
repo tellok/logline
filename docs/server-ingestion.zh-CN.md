@@ -6,7 +6,7 @@
 
 reporter 接受 `https://<key>@<host>[/prefix]/<projectUUID>`（仅回环地址可使用 HTTP）。实际请求发送至 `<部署根路径>/api/v1/logs`，不在 URL 中携带凭据。不要在日志中记录 DSN 或 Authorization 请求头。
 
-**浏览器上报：** 将 `LOGLINE_INGEST_ORIGINS` 设为逗号分隔的精确浏览器 Origin 列表，例如 `https://app.example.org`。默认拒绝所有携带 `Origin` 的写入请求；不带 `Origin` 的后端请求不受影响。上传路由支持 `OPTIONS` 预检，允许 `POST` 携带 `Authorization` 和 `Content-Type`。Origin 白名单只是浏览器策略，不是来源鉴真，也不能保证阻止垃圾上报。
+**浏览器上报：** 将 `LOGLINE_INGEST_ORIGINS` 设为逗号分隔的精确浏览器 Origin 列表，例如 `https://app.example.org`。留空则接受任意浏览器来源；填入精确来源列表后仅允许这些来源。不带 `Origin` 的后端请求始终不受影响。上传路由支持 `OPTIONS` 预检，允许 `POST` 携带 `Authorization` 和 `Content-Type`。Origin 白名单只是浏览器策略，不是来源鉴真，也不能保证阻止垃圾上报。
 
 ## 批量上报
 
