@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS log_events (
   message text NOT NULL,
   fields jsonb NOT NULL,
   context jsonb NOT NULL,
+  tags jsonb NOT NULL DEFAULT '{}'::jsonb,
   event jsonb NOT NULL,
   received_at timestamptz NOT NULL DEFAULT clock_timestamp(),
   ingest_seq bigserial NOT NULL,
@@ -19,6 +20,17 @@ CREATE INDEX IF NOT EXISTS log_events_by_trace ON log_events(project_id, (contex
 CREATE INDEX IF NOT EXISTS log_events_by_session ON log_events(project_id, (context->>'sessionId'), timestamp_ms) WHERE context ? 'sessionId';
 CREATE INDEX IF NOT EXISTS log_events_by_seq ON log_events(project_id, ingest_seq);
 CREATE INDEX IF NOT EXISTS log_events_by_receipt ON log_events(received_at);
+-- Every tag key/value pair of every event is indexed at write time; new keys need no DDL.
+CREATE INDEX IF NOT EXISTS log_events_by_tags ON log_events USING GIN (tags jsonb_path_ops);
+
+-- One row per discovered tag key; the Explorer lists live keys and prunes stale ones.
+CREATE TABLE IF NOT EXISTS project_tag_keys (
+  project_id uuid NOT NULL REFERENCES projects(project_id),
+  tag_key text NOT NULL CHECK (length(tag_key) BETWEEN 1 AND 64 AND tag_key ~ '^[A-Za-z_][A-Za-z0-9_-]*$'),
+  first_seen timestamptz NOT NULL DEFAULT clock_timestamp(),
+  last_seen timestamptz NOT NULL DEFAULT clock_timestamp(),
+  PRIMARY KEY(project_id, tag_key)
+);
 
 -- One counter per project, never one row per event or time window.
 CREATE TABLE IF NOT EXISTS log_ingest_quota (

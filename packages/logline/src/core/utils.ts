@@ -1,4 +1,60 @@
-import { maskString, sensitiveReplacer } from './masking';
+import { isSensitiveKey, maskString, sensitiveReplacer } from './masking';
+import { type LogTags } from './types';
+
+/**
+ * Tag keys stay within the Explorer queryable segment pattern.
+ */
+const TAG_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]{0,63}$/;
+const MAX_TAGS = 16;
+const MAX_TAG_VALUE_LENGTH = 256;
+
+/**
+ * Normalize user-supplied tags into a flat, masked, queryable map.
+ * Invalid keys, non-string or empty values, and entries beyond the cap are dropped.
+ * Values pass through masking; sensitive key names collapse to '***'.
+ * Never throws: exotic inputs such as Proxies with throwing traps yield undefined.
+ * @param input Candidate tag map from a log call or configuration.
+ * @returns Normalized tags, or undefined when nothing survives.
+ */
+export const normalizeTags = (input: unknown): LogTags | undefined => {
+  try {
+    if (typeof input !== 'object' || input === null || Array.isArray(input)) return undefined;
+    const out: Record<string, string> = {};
+    for (const key of Object.keys(input)) {
+      if (Object.keys(out).length >= MAX_TAGS) break;
+      if (!TAG_KEY_PATTERN.test(key)) continue;
+      const descriptor = Object.getOwnPropertyDescriptor(input, key);
+      if (!descriptor || !('value' in descriptor)) continue;
+      const value = descriptor.value;
+      if (typeof value !== 'string' || value.length === 0) continue;
+      out[key] = isSensitiveKey(key) ? '***' : maskString(value.slice(0, MAX_TAG_VALUE_LENGTH));
+    }
+    return Object.keys(out).length > 0 ? Object.freeze(out) : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * Merge global tags with per-record tags; record entries win.
+ * @param base Global configured tags.
+ * @param override Per-record tags.
+ */
+export const mergeTags = (base: LogTags | undefined, override: LogTags | undefined): LogTags | undefined => {
+  if (!base) return override;
+  if (!override) return base;
+  // Record keys win on conflicts and come first, so the cap drops global extras first.
+  const merged: Record<string, string> = {};
+  for (const [key, value] of Object.entries(override)) merged[key] = value;
+  for (const [key, value] of Object.entries(base)) {
+    if (!(key in merged)) merged[key] = value;
+  }
+  const keys = Object.keys(merged);
+  if (keys.length > MAX_TAGS) {
+    for (const key of keys.slice(MAX_TAGS)) delete merged[key];
+  }
+  return Object.freeze(merged);
+};
 
 /**
  * Serialize values safely so JSON.stringify failures do not interrupt logging.

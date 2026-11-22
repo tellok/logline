@@ -116,6 +116,8 @@ console.table(databaseNames);
 
 直接从 IndexedDB 获取最近的日志记录，无需持有插件实例。
 
+返回的每条记录包含毫秒时间戳形式的 `id`、`level`、`message`，以及在日志调用或全局配置中设置过的 `tags`。标签只是记录上的普通数据：本地查询保持时间序，不为标签建立索引。
+
 该函数和 `createIndexedDBLoggingPlugin()` 使用同一套数据库名解析规则，因此未显式命名的插件按 Vite base 写入后，独立 `getLogs()` 会查询同一个数据库。
 
 | 参数名  | 类型                    | 默认值      | 用途                                     |

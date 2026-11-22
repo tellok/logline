@@ -62,7 +62,9 @@ configureLogline({ plugins: [reporting] });
 
 ## 快照和隐私
 
-`ReportingEvent` 包含稳定字符串 `id`、五种等级之一的 `level`、原始 Unix 毫秒 `timestamp`、带来源前缀的格式化 `message`，以及可选 JSON `fields`、`context`。字段保留时间戳分量和脱敏后的参数信息。用 ID 标识事件，不要以时间戳或接收顺序代替 ID。版本、环境、会话、追踪等上下文须自行提供。不会发送原始记录或保留可变实参引用。
+`ReportingEvent` 包含稳定字符串 `id`、五种等级之一的 `level`、原始 Unix 毫秒 `timestamp`、带来源前缀的格式化 `message`，以及可选 JSON `fields`、`context`、`tags`。字段保留时间戳分量和脱敏后的参数信息。用 ID 标识事件，不要以时间戳或接收顺序代替 ID。版本、环境、会话、追踪等上下文须自行提供。不会发送原始记录或保留可变实参引用。
+
+标签来自记录自身的扁平字符串键值对（`configureLogline({ tags })` 和单次调用的输入对象），入库前会再次清理：不符合 `^[A-Za-z_][A-Za-z0-9_-]{0,63}$` 的键、访问器属性、空值或非字符串值会被丢弃；值最长 256 个码元；最多保留 16 个条目。`transform` 可以替换 `event.tags`，其输出会经过同样的清理。
 
 采样和**有界的单条快照在日志调用返回前同步执行**；批量编码及网络操作稍后进行，日志调用不等待网络。仅检查已知的数据属性和 `snapshotKeys` 显式选定的额外属性，其他属性直接略过，以免枚举无界对象。自定义业务字段应加入 `snapshotKeys`。内置字段包括错误详情（`name`、`message`、`stack`、`cause`、`code`）、常见结构化数据（`status`、`id`、`type`、`value`、`data`、`details`、`error`、`nested`、`user`、`durationMs`、`count`）、应用标识（`environment`、`release`、`traceId`、`sessionId`、`userId`）、已知脱敏字段及快照自身字段。可额外指定最多 24 个属性名（1–64 个 ASCII 字母、数字、下划线、点或连字符；不允许原型及序列化器属性）。每次清理最多访问 96 个值、深度 4、每个数组 16 项；单字符串最多 2,048 个 UTF-16 码元、总共 8,192 个，标准上下文标识上限为 256 个。即使允许更大的传输批次，最终快照超过 64 KiB 也会丢弃。循环引用、不支持的值、访问器、Error 及超长值采取保守处理。已有掩码不能识别所有密钥，请勿记录敏感信息。可用 `transform` 替换业务敏感值，返回 `undefined` 表示丢弃。回调只接收独立快照；返回值会再次清理，不能改写身份或时间。回调应快速完成，单条快照出错不影响其他记录。
 

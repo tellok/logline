@@ -11,6 +11,12 @@ const text = (value, max) =>
   Buffer.byteLength(value) <= max;
 const identity = (value) => text(value, 128) && value.trim().length > 0;
 const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
+// Tags stay flat and queryable: bounded keys within the Explorer segment pattern, short string values.
+const tagKey = /^[A-Za-z_][A-Za-z0-9_-]{0,63}$/;
+const tags = (value) =>
+  object(value) &&
+  Object.keys(value).length <= 16 &&
+  Object.entries(value).every(([key, item]) => tagKey.test(key) && text(item, 256) && item.length > 0);
 
 export const fault = (status, code, message, extra = {}) =>
   Object.assign(new Error(message), { status, code, ...extra });
@@ -58,6 +64,7 @@ export function partition(events) {
       !levels.has(e.level) ||
       !text(e.message, 65536) ||
       (e.fields !== undefined && !object(e.fields)) ||
+      (e.tags !== undefined && !tags(e.tags)) ||
       (e.context !== undefined &&
         (!object(e.context) ||
           ['traceId', 'sessionId', 'userId', 'environment', 'release'].some(
@@ -125,9 +132,19 @@ export async function ingest(db, token, projectId, body, config) {
       };
     }
     await client.query(
-      `INSERT INTO log_events(project_id,event_id,level,timestamp_ms,message,fields,context,event,ingest_key_id)
-      SELECT $1,e->>'id',e->>'level',(e->>'timestamp')::bigint,e->>'message',coalesce(e->'fields','{}'::jsonb),coalesce(e->'context','{}'::jsonb),e,$3 FROM jsonb_array_elements($2::jsonb) e`,
+      `INSERT INTO log_events(project_id,event_id,level,timestamp_ms,message,fields,context,tags,event,ingest_key_id)
+      SELECT $1,e->>'id',e->>'level',(e->>'timestamp')::bigint,e->>'message',coalesce(e->'fields','{}'::jsonb),coalesce(e->'context','{}'::jsonb),coalesce(e->'tags','{}'::jsonb),e,$3 FROM jsonb_array_elements($2::jsonb) e`,
       [projectId, JSON.stringify(fresh.map((v) => v.event)), keyId],
+    );
+    // Discover tag keys automatically; replayed IDs do not refresh key freshness.
+    await client.query(
+      `INSERT INTO project_tag_keys(project_id,tag_key,last_seen)
+      SELECT $1::uuid,k,clock_timestamp() FROM (
+        SELECT DISTINCT k FROM jsonb_array_elements($2::jsonb) e
+        CROSS JOIN LATERAL jsonb_object_keys(coalesce(e->'tags','{}'::jsonb)) k
+      ) keys
+      ON CONFLICT (project_id,tag_key) DO UPDATE SET last_seen=excluded.last_seen`,
+      [projectId, JSON.stringify(fresh.map((v) => v.event))],
     );
     return { status: 200, body: result, inserted: fresh.length, bytes };
   });

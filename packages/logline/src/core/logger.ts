@@ -2,8 +2,16 @@ import { LOG_LEVEL_INDEX, LOG_LEVELS, type LogLevelName } from './constants';
 import { isTestEnv } from './env';
 import { maskString } from './masking';
 import { getLoglineConfig } from './state';
-import { type LoggerFunction, type LogInput, type LogMessage, type LogRecord, type LoglineConfig } from './types';
-import { safeStringify } from './utils';
+import { resolveScopeTags } from './scope';
+import {
+  type LoggerFunction,
+  type LogInput,
+  type LogMessage,
+  type LogRecord,
+  type LogTags,
+  type LoglineConfig,
+} from './types';
+import { mergeTags, normalizeTags, safeStringify } from './utils';
 
 type ConsoleMethod = 'debug' | 'log' | 'warn' | 'error';
 
@@ -89,6 +97,7 @@ const isTemplateStringsArray = (value: unknown): value is TemplateStringsArray =
 interface NormalizedLogInput {
   readonly enable: boolean;
   readonly key?: string;
+  readonly tags?: LogTags;
   readonly args: readonly unknown[];
   readonly messageText?: string;
   readonly messageArgs: readonly unknown[];
@@ -133,6 +142,7 @@ const normalizeLogInput = (input: LogInput, rest: readonly unknown[]): Normalize
   return {
     enable: input.enable !== false,
     key: input.key,
+    tags: normalizeTags(input.tags),
     args,
     messageText,
     messageArgs,
@@ -250,6 +260,8 @@ const buildRecord = (level: LogLevelName, input: NormalizedLogInput, config: Log
     scope,
     messageText: input.messageText,
     messageArgs: input.messageArgs,
+    // Priority: global tags, then active scopes outer-to-inner, then per-call tags.
+    tags: mergeTags(mergeTags(config.tags, resolveScopeTags()), input.tags),
     timestamp: config.timeProvider.now(),
   };
 };

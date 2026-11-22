@@ -98,7 +98,8 @@ export function fieldParts(name) {
   if (
     path.length < 2 ||
     path.length > 5 ||
-    !['fields', 'context'].includes(path[0]) ||
+    !['fields', 'context', 'tags'].includes(path[0]) ||
+    (path[0] === 'tags' && path.length !== 2) ||
     path.slice(1).some((key) => !/^[A-Za-z_][A-Za-z0-9_-]{0,63}$/.test(key))
   )
     fail('Unknown or invalid field name');
@@ -113,7 +114,7 @@ export function fieldSql(name, values, type) {
     if (type && type !== fieldTypes[name]) fail(`Field ${name} is not ${type}`);
     return type ? `(${expr})` : `to_jsonb(${expr})`;
   }
-  const root = path[0] === 'fields' ? 'fields' : 'context';
+  const root = path[0];
   expr = `(e.${root} #> ${bind(values, path.slice(1))}::text[])`;
   if (!type) return expr;
   const cast = { number: 'numeric', string: 'text', boolean: 'boolean' }[type];
@@ -163,6 +164,11 @@ export function compileQuery(query = {}, allowedIds, now = Date.now()) {
     if (!['boolean', 'number', 'string'].includes(type) || (type === 'number' && !Number.isFinite(value)))
       fail('Expected a finite number, string or boolean');
     if (type === 'string') text(value, 'filter value');
+    // Tag equality compiles to jsonb containment so the GIN index serves any key without DDL.
+    // Missing keys and non-string payloads make containment false, matching extraction semantics.
+    const tagPath = op === 'eq' && type === 'string' ? fieldParts(field) : null;
+    if (tagPath?.[0] === 'tags')
+      return `(e.tags @> jsonb_build_object(${bind(values, tagPath[1])}::text, to_jsonb(${bind(values, value)}::text)))`;
     const expr = fieldSql(field, values, type);
     if (['contains', 'icontains', 'regex'].includes(op)) {
       if (field !== 'message' || type !== 'string') fail('Text search requires message and a string');

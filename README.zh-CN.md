@@ -88,11 +88,12 @@ export default defineConfig({
 
 `configureLogline` 用于在运行时配置日志系统的全局行为，如过滤、节流、插件扩展等。
 
-| 参数名     | 类型                  | 默认值                  | 用途                                                   |
-| :--------- | :-------------------- | :---------------------- | :----------------------------------------------------- |
-| `filter`   | `(record) => boolean` | `undefined`             | 全局日志过滤器，返回 `false` 则丢弃日志                |
-| `throttle` | `number \| object`    | `undefined`（默认关闭） | 全局日志节流配置                                       |
-| `plugins`  | `LoglinePlugin[]`     | `[]`                    | 日志插件列表，用于扩展日志处理能力（如写入 IndexedDB） |
+| 参数名     | 类型                     | 默认值                  | 用途                                                   |
+| :--------- | :----------------------- | :---------------------- | :----------------------------------------------------- |
+| `filter`   | `(record) => boolean`    | `undefined`             | 全局日志过滤器，返回 `false` 则丢弃日志                |
+| `throttle` | `number \| object`       | `undefined`（默认关闭） | 全局日志节流配置                                       |
+| `plugins`  | `LoglinePlugin[]`        | `[]`                    | 日志插件列表，用于扩展日志处理能力（如写入 IndexedDB） |
+| `tags`     | `Record<string, string>` | `undefined`             | 全局标签，合并进每条日志记录                           |
 
 ### 全局过滤 (`filter`)
 
@@ -130,6 +131,38 @@ configureLogline({
     // 自定义节流 Key 生成策略：结合日志等级和首个参数
     key: ({ level, args }) => `${level}-${String(args[0])}`,
   },
+});
+```
+
+### 标签 (`tags`)
+
+以 Sentry 风格为日志记录附加扁平的字符串键值对。可在全局配置中设置，也可在单次调用的输入对象上设置；冲突时单次调用的条目优先。键必须匹配 `^[A-Za-z_][A-Za-z0-9_-]{0,63}$`；值为非空字符串，最长 256 个字符并经过脱敏（敏感键名直接记为 `***`）。每条记录最多保留 16 个条目。标签随 IndexedDB 记录一起持久化；上报后在日志查询中成为可过滤、可搜索、可聚合的 `tags.*` 字段，服务端会为所有标签对建立索引。
+
+```ts
+configureLogline({ tags: { app: 'shop' } });
+LOG({ message: '结账完成', tags: { experiment: 'one-click' } });
+```
+
+全局标签也可以用命令式 API 增量管理，不影响其余条目：`setTag(key, value)` 新增或更新单个标签，`setTags(object)` 合并多个，`removeTag(key)` 删除单个。这些操作在当前配置基础上合并；之后再调用 `configureLogline({ tags })` 仍会整体替换。
+
+```ts
+import { removeTag, setTag, setTags } from 'logline';
+
+setTag('release', '2.1.0');
+setTags({ experiment: 'one-click', region: 'eu' });
+removeTag('experiment');
+```
+
+如果标签只应作用于某段代码路径，可以用 Sentry 风格的 `withScope` 包裹。回调内记录的日志会把 scope 标签合并到全局标签与单次调用标签之间；嵌套 scope 按外层到内层生效，冲突时内层优先。同步回调在返回或抛错时解除 scope；async 回调的 scope 会保持到返回的 promise 结束（浏览器没有 AsyncLocalStorage，并发的异步 scope 之间可能共享标签）。标签 API 不会向业务代码抛异常：非法输入会被静默丢弃，而回调自身抛出的异常会原样传播。
+
+```ts
+import { LOG, withScope } from 'logline';
+
+const result = await withScope(async (scope) => {
+  scope.setTag('requestId', request.id);
+  scope.setTags({ handler: 'checkout' });
+  LOG('请求开始'); // 携带 requestId 和 handler
+  return handle(request);
 });
 ```
 

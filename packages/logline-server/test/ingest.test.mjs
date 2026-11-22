@@ -44,9 +44,17 @@ test('one malformed event never spoils its valid neighbors', () => {
     { huge: 'a'.repeat(65536) },
     { extra: deep },
     { fields: { number: Infinity } },
+    { tags: 'oops' },
+    { tags: [] },
+    { tags: { 'bad key': 'v' } },
+    { tags: { empty: '' } },
+    { tags: { num: 1 } },
+    { tags: { long: 'x'.repeat(257) } },
+    { tags: { nested: { deep: true } } },
+    { tags: Object.fromEntries(Array.from({ length: 17 }, (_, i) => [`k${i}`, 'v'])) },
   ];
   const { valid, rejectedEventIds } = partition([
-    event('ok', { fields: { duration: 2 }, context: { environment: 'synthetic' } }),
+    event('ok', { fields: { duration: 2 }, context: { environment: 'synthetic' }, tags: { app: 'shop' } }),
     ...values.map((v, i) => event(String(i), v)),
   ]);
   assert.deepEqual(
@@ -250,7 +258,7 @@ test(
       await Promise.all([migrate(db), migrate(db)]);
       assert.deepEqual(
         (await db.query('SELECT version FROM logline_schema_versions ORDER BY version')).rows.map((x) => x.version),
-        [1, 2],
+        [1, 3],
       );
       assert.deepEqual((await db.query('SELECT project_id,event,ingest_key_id FROM log_events')).rows, [
         { project_id: p, event: e, ingest_key_id: null },

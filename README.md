@@ -40,6 +40,38 @@ configureLogline({
 });
 ```
 
+## Tags
+
+Tags attach flat string key/value pairs to records, Sentry-style. Configure global tags and per-call tags on an input object; per-call entries win on conflicts. Keys must match `^[A-Za-z_][A-Za-z0-9_-]{0,63}$`; values are non-empty strings of at most 256 characters and pass through masking (sensitive key names become `***`). A record keeps at most 16 entries. Tags persist alongside IndexedDB records and, when reported, become filterable, searchable and aggregatable `tags.*` fields in the Logs Explorer, with every pair indexed on the server.
+
+```ts
+configureLogline({ tags: { app: 'shop' } });
+LOG({ message: 'Checkout finished', tags: { experiment: 'one-click' } });
+```
+
+Global tags can also be managed imperatively without replacing the rest of the set: `setTag(key, value)` adds or updates one entry, `setTags(object)` merges several, and `removeTag(key)` deletes one. These merge into the current configuration; a later `configureLogline({ tags })` still replaces the whole set.
+
+```ts
+import { removeTag, setTag, setTags } from 'logline';
+
+setTag('release', '2.1.0');
+setTags({ experiment: 'one-click', region: 'eu' });
+removeTag('experiment');
+```
+
+For tags that apply to just one code path, wrap the work in `withScope`, Sentry-style. Records logged inside the callback merge scope tags between global and per-call tags; nested scopes apply outer-to-inner with inner entries winning. A synchronous callback detaches its scope on return or throw; an async callback keeps its scope until the returned promise settles (concurrent async scopes may share tags, as browsers lack AsyncLocalStorage). Tag APIs never throw into application code: invalid or hostile input is dropped silently, while exceptions raised by your own callback propagate unchanged.
+
+```ts
+import { LOG, withScope } from 'logline';
+
+const result = await withScope(async (scope) => {
+  scope.setTag('requestId', request.id);
+  scope.setTags({ handler: 'checkout' });
+  LOG('Request started'); // carries requestId and handler
+  return handle(request);
+});
+```
+
 ## Upload to your own server
 
 Install `logline-server-reporter@beta` alongside the matching `logline@beta` release. The reporter is optional: importing Logline alone sends nothing. Configure one reporter per destination using a project DSN. This example runs in a trusted application process:

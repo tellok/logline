@@ -11,15 +11,20 @@ export {
 } from './core/logger';
 
 export { peekObject } from './core/utils';
+export { withScope, type LogScope } from './core/scope';
 
 export { createLoglineAutoImport, loglineAutoImportResolvers } from './auto-import';
 export {
   configureLogline,
   defaultThrottleKeyResolver,
   getLoglineConfig,
+  removeTag,
   resetLoglineConfig,
+  setTag,
+  setTags,
   type LogFilter,
   type LogRecord,
+  type LogTags,
   type LogThrottleConfig,
   type LogThrottleKey,
   type LogThrottleKeyResolver,

@@ -71,6 +71,23 @@ test('scalar comparisons never coerce strings to numbers; paths and values are p
     assert.throws(() => compile({ where }), { status: 400, code: 'invalid_query' });
 });
 
+test('tag equality compiles to GIN-servable containment; other tag operators extract values', () => {
+  const q = compile({
+    where: { and: [leaf('tags.app', 'eq', 'shop'), leaf('tags.app', 'neq', 'mall'), leaf('tags.tier', 'gt', 'a')] },
+  });
+  // Key and value are bound parameters; the containment shape matches the jsonb_path_ops GIN index.
+  assert.match(q.where, /e\.tags @> jsonb_build_object\(\$4::text, to_jsonb\(\$5::text\)\)/);
+  assert.match(q.where, /\(e\.tags #> \$6::text\[\]\)/);
+  assert.deepEqual(q.values.slice(3), ['app', 'shop', ['app'], 'mall', ['tier'], 'a']);
+  for (const where of [
+    leaf('tags.app.deep', 'eq', 'x'),
+    leaf('tags', 'eq', 'x'),
+    leaf('tags.1bad', 'eq', 'x'),
+    leaf('tags.app', 'contains', 'x'),
+  ])
+    assert.throws(() => compile({ where }), { status: 400, code: 'invalid_query' });
+});
+
 test('Boolean depth, breadth, total nodes, unknown keys and regex syntax are bounded', () => {
   const f = leaf('message', 'icontains', 'example');
   let deep = f;

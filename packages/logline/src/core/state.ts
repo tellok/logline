@@ -1,4 +1,5 @@
 import {
+  type LogTags,
   type LogThrottleConfig,
   type LogThrottleKeyResolver,
   type LogTimeProvider,
@@ -7,6 +8,7 @@ import {
   type LoglineConfigInput,
   type LoglinePlugin,
 } from './types';
+import { normalizeTags } from './utils';
 
 /**
  * Resolve the default throttle key; records without a key are not throttled.
@@ -47,6 +49,7 @@ let configState: LoglineConfig = {
   filter: undefined,
   throttle: undefined,
   plugins: [],
+  tags: undefined,
   timeProvider: defaultTimeProvider,
   revision: 0,
 };
@@ -134,14 +137,49 @@ export const updateLoglineConfig = (input: LoglineConfigInput): LoglineConfig =>
     input.plugins === undefined
       ? configState.plugins
       : input.plugins.filter((plugin) => !automaticPlugins.includes(plugin));
+  const nextTags = (): LogTags | undefined => {
+    if (input.tags === undefined) return configState.tags;
+    return normalizeTags(input.tags);
+  };
   configState = {
     filter: input.filter === undefined ? configState.filter : input.filter,
     throttle: nextThrottle,
     plugins: nextPlugins,
+    tags: nextTags(),
     timeProvider: input.timeProvider ?? configState.timeProvider,
     revision: configState.revision + 1,
   };
   return getLoglineConfig();
+};
+
+/**
+ * Add or update one global tag without replacing the rest, Sentry-style.
+ * Validation matches configuration tags: invalid keys and empty or non-string
+ * values are dropped, values are masked.
+ * @param key Tag key matching /^[A-Za-z_][A-Za-z0-9_-]{0,63}$/.
+ * @param value Tag value.
+ */
+export const setTag = (key: string, value: string): LoglineConfig => {
+  return updateLoglineConfig({ tags: { ...configState.tags, [key]: value } });
+};
+
+/**
+ * Merge several global tags into the existing set.
+ * Normalization runs before merging so hostile inputs cannot throw here.
+ * @param tags Flat string pairs to merge.
+ */
+export const setTags = (tags: LogTags): LoglineConfig => {
+  return updateLoglineConfig({ tags: { ...configState.tags, ...normalizeTags(tags) } });
+};
+
+/**
+ * Remove one global tag; absent keys are ignored.
+ * @param key Tag key to remove.
+ */
+export const removeTag = (key: string): LoglineConfig => {
+  const next: Record<string, string> = { ...configState.tags };
+  delete next[key];
+  return updateLoglineConfig({ tags: next });
 };
 
 /**
@@ -152,6 +190,7 @@ export const resetLoglineConfig = (): LoglineConfig => {
     filter: undefined,
     throttle: undefined,
     plugins: [],
+    tags: undefined,
     timeProvider: defaultTimeProvider,
     revision: configState.revision + 1,
   };

@@ -28,7 +28,7 @@ reporter 接受 `https://<key>@<host>[/prefix]/<projectUUID>`（仅回环地址�
 }
 ```
 
-使用**服务端生成的项目 UUID** 而不是 slug。请求体仅接受 `projectId` 和 `events`，发送旧版 `service` 字段会被拒绝。事件 ID 为非空白字符串，UTF-8 编码不超过 128 字节。每批至少一个事件，ID 不得重复。级别为 `TRACE`、`DEBUG`、`LOG`、`WARN`、`ERROR`。时间戳为 Unix 毫秒整数，范围 `[0,253402300799999]`；消息为字符串。可选 `fields` 和 `context` 均为 JSON 对象。若提供 `context.environment`、`release`、`traceId`、`sessionId`、`userId`，值必须为不超过 1,024 字节的字符串。保留其他事件属性，但顶层 `ingestKeyId` 为保留名：客户端提供此属性时该事件会被拒绝。服务端记录首次实际提交该事件的项目密钥 ID（不是原始密钥）。重放不会覆盖来源；从 v1 迁移的记录不标记密钥 ID。每个完整事件序列化后最多 65,536 UTF-8 字节，嵌套深度不超过 24，键名不超过 1,024 字节。拒绝非有限数值、NUL 和无效 Unicode。使用未压缩的 UTF-8 JSON。
+使用**服务端生成的项目 UUID** 而不是 slug。请求体仅接受 `projectId` 和 `events`，发送旧版 `service` 字段会被拒绝。事件 ID 为非空白字符串，UTF-8 编码不超过 128 字节。每批至少一个事件，ID 不得重复。级别为 `TRACE`、`DEBUG`、`LOG`、`WARN`、`ERROR`。时间戳为 Unix 毫秒整数，范围 `[0,253402300799999]`；消息为字符串。可选 `fields` 和 `context` 均为 JSON 对象。若提供 `context.environment`、`release`、`traceId`、`sessionId`、`userId`，值必须为不超过 1,024 字节的字符串。`tags` 为可选的扁平字符串映射：最多 16 个条目，键匹配 `^[A-Za-z_][A-Za-z0-9_-]{0,63}$`，值为非空字符串且不超过 256 字节。写入时每个标签对都会通过 GIN 索引被收录，新业务键无需任何 DDL；服务端按项目记录出现过的标签键，并随保留期清理过期键。保留其他事件属性，但顶层 `ingestKeyId` 为保留名：客户端提供此属性时该事件会被拒绝。服务端记录首次实际提交该事件的项目密钥 ID（不是原始密钥）。重放不会覆盖来源；从 v1 迁移的记录不标记密钥 ID。每个完整事件序列化后最多 65,536 UTF-8 字节，嵌套深度不超过 24，键名不超过 1,024 字节。拒绝非有限数值、NUL 和无效 Unicode。使用未压缩的 UTF-8 JSON。
 
 `200` 响应将每个输入 ID 分类，不保证顺序：
 
