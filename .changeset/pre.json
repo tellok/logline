@@ -2,7 +2,16 @@
   "mode": "pre",
   "tag": "beta",
   "initialVersions": {
-    "logline": "1.1.5"
+    "logline": "1.1.5",
+    "logline-server": "2.0.0-beta.0",
+    "logline-server-reporter": "2.0.0-beta.0"
   },
-  "changesets": ["first-v2-beta"]
+  "changesets": [
+    "documentation-pages",
+    "first-v2-beta",
+    "self-hosted-reporting",
+    "vite5-compatibility",
+    "vite8-native-optimizer",
+    "workspace-foundation"
+  ]
 }
