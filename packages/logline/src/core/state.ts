@@ -153,6 +153,35 @@ export const updateLoglineConfig = (input: LoglineConfigInput): LoglineConfig =>
 };
 
 /**
+ * Add or update one global tag without replacing the rest, Sentry-style.
+ * Validation matches configuration tags: invalid keys and empty or non-string
+ * values are dropped, values are masked.
+ * @param key Tag key matching /^[A-Za-z_][A-Za-z0-9_-]{0,63}$/.
+ * @param value Tag value.
+ */
+export const setTag = (key: string, value: string): LoglineConfig => {
+  return updateLoglineConfig({ tags: { ...configState.tags, [key]: value } });
+};
+
+/**
+ * Merge several global tags into the existing set.
+ * @param tags Flat string pairs to merge.
+ */
+export const setTags = (tags: LogTags): LoglineConfig => {
+  return updateLoglineConfig({ tags: { ...configState.tags, ...tags } });
+};
+
+/**
+ * Remove one global tag; absent keys are ignored.
+ * @param key Tag key to remove.
+ */
+export const removeTag = (key: string): LoglineConfig => {
+  const next: Record<string, string> = { ...configState.tags };
+  delete next[key];
+  return updateLoglineConfig({ tags: next });
+};
+
+/**
  * Restore defaults for tests or state cleanup.
  */
 export const resetLoglineConfig = (): LoglineConfig => {

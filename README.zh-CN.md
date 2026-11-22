@@ -143,6 +143,16 @@ configureLogline({ tags: { app: 'shop' } });
 LOG({ message: '结账完成', tags: { experiment: 'one-click' } });
 ```
 
+全局标签也可以用命令式 API 增量管理，不影响其余条目：`setTag(key, value)` 新增或更新单个标签，`setTags(object)` 合并多个，`removeTag(key)` 删除单个。这些操作在当前配置基础上合并；之后再调用 `configureLogline({ tags })` 仍会整体替换。
+
+```ts
+import { removeTag, setTag, setTags } from 'logline';
+
+setTag('release', '2.1.0');
+setTags({ experiment: 'one-click', region: 'eu' });
+removeTag('experiment');
+```
+
 ### 插件扩展 (`plugins`)
 
 通过插件机制可在打印日志的同时执行额外动作，如日志上报、持久化存储等。

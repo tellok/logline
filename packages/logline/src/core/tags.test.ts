@@ -1,5 +1,35 @@
 import { describe, expect, it } from 'vitest';
+import { getLoglineConfig, removeTag, resetLoglineConfig, setTag, setTags } from './state';
 import { mergeTags, normalizeTags } from './utils';
+
+describe('imperative tag management', () => {
+  it('sets, merges and removes global tags without replacing other configuration', () => {
+    resetLoglineConfig();
+    expect(getLoglineConfig().tags).toBeUndefined();
+
+    setTag('app', 'shop');
+    expect(getLoglineConfig().tags).toEqual({ app: 'shop' });
+
+    setTags({ env: 'prod', app: 'mall' });
+    expect(getLoglineConfig().tags).toEqual({ app: 'mall', env: 'prod' });
+
+    removeTag('app');
+    removeTag('absent');
+    expect(getLoglineConfig().tags).toEqual({ env: 'prod' });
+
+    removeTag('env');
+    expect(getLoglineConfig().tags).toBeUndefined();
+    resetLoglineConfig();
+  });
+
+  it('applies the same validation and masking as configuration tags', () => {
+    resetLoglineConfig();
+    setTag('bad key', 'dropped');
+    setTag('password', 'fixture-secret');
+    expect(getLoglineConfig().tags).toEqual({ password: '***' });
+    resetLoglineConfig();
+  });
+});
 
 describe('normalizeTags', () => {
   it('keeps flat string pairs with queryable keys', () => {

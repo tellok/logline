@@ -49,6 +49,16 @@ configureLogline({ tags: { app: 'shop' } });
 LOG({ message: 'Checkout finished', tags: { experiment: 'one-click' } });
 ```
 
+Global tags can also be managed imperatively without replacing the rest of the set: `setTag(key, value)` adds or updates one entry, `setTags(object)` merges several, and `removeTag(key)` deletes one. These merge into the current configuration; a later `configureLogline({ tags })` still replaces the whole set.
+
+```ts
+import { removeTag, setTag, setTags } from 'logline';
+
+setTag('release', '2.1.0');
+setTags({ experiment: 'one-click', region: 'eu' });
+removeTag('experiment');
+```
+
 ## Upload to your own server
 
 Install `logline-server-reporter@beta` alongside the matching `logline@beta` release. The reporter is optional: importing Logline alone sends nothing. Configure one reporter per destination using a project DSN. This example runs in a trusted application process:

@@ -2,7 +2,7 @@ import { LOG } from './logger';
 import { addAutomaticLoglinePlugin, removeAutomaticLoglinePlugin, updateLoglineConfig } from './state';
 import { type LoglineConfig, type LoglineConfigInput, type LoglinePlugin } from './types';
 
-export { defaultThrottleKeyResolver, getLoglineConfig, resetLoglineConfig } from './state';
+export { defaultThrottleKeyResolver, getLoglineConfig, removeTag, resetLoglineConfig, setTag, setTags } from './state';
 export {
   type LogFilter,
   type LogRecord,
