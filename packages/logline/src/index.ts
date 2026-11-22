@@ -20,6 +20,7 @@ export {
   resetLoglineConfig,
   type LogFilter,
   type LogRecord,
+  type LogTags,
   type LogThrottleConfig,
   type LogThrottleKey,
   type LogThrottleKeyResolver,

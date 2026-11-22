@@ -138,6 +138,21 @@ describe('createIndexedDBLoggingPlugin', () => {
     expect(stored.id).toBe(encodeId(1));
   });
 
+  test('persists structured tags without dedicated indexes and returns them unchanged', async () => {
+    const plugin = createIndexedDBLoggingPlugin({ databaseName: 'test-tags-roundtrip' });
+    const tagged = { ...createRecord('WARN', 'tagged', 2), tags: { app: 'shop', env: 'prod' } };
+    await plugin.onLog?.(tagged);
+    await plugin.onLog?.(createRecord('WARN', 'untagged', 3));
+
+    const logs = await plugin.getLogs(10);
+    expect(logs).toHaveLength(2);
+    const [untagged, taggedLog] = logs;
+    expect(untagged?.message).toBe('untagged');
+    expect(untagged).not.toHaveProperty('tags');
+    expect(taggedLog?.tags).toEqual({ app: 'shop', env: 'prod' });
+    plugin.dispose();
+  });
+
   test('persists onLog records without intercepting ordinary console after initialization', async () => {
     const consoleSpies = [
       vi.spyOn(console, 'debug').mockImplementation(() => undefined),

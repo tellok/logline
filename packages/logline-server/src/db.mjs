@@ -54,8 +54,8 @@ export async function migrate(db) {
     );
     const { rows } = await client.query('SELECT version FROM logline_schema_versions ORDER BY version DESC LIMIT 1');
     const version = rows[0]?.version ?? 0;
-    if (version === 2) return;
-    if (version !== 0 && version !== 1) throw Error('Unsupported database schema version');
+    if (version === 3) return;
+    if (![0, 1, 2].includes(version)) throw Error('Unsupported database schema version');
     if (version === 1) {
       // Keep events, original payloads and identities; the old envelope's service label is retired.
       await client.query('ALTER TABLE log_events DROP COLUMN service');
@@ -81,11 +81,14 @@ export async function migrate(db) {
         await client.query(`ALTER TABLE ${table} ADD CONSTRAINT ${table}_${column}_check CHECK (${check})`);
       }
     }
+    // Existing installations gain the tag column before the scripts create its GIN index.
+    if (version >= 1)
+      await client.query(`ALTER TABLE log_events ADD COLUMN IF NOT EXISTS tags jsonb NOT NULL DEFAULT '{}'::jsonb`);
     for (const sql of migrations) await client.query(sql);
     // Historical records predate key attribution. Do not infer or backfill an identity.
     if (version === 1)
       await client.query('ALTER TABLE log_events ADD COLUMN ingest_key_id uuid REFERENCES project_keys(key_id)');
-    await client.query('INSERT INTO logline_schema_versions (version) VALUES (2)');
+    await client.query('INSERT INTO logline_schema_versions (version) VALUES (3)');
   });
 }
 
@@ -97,5 +100,7 @@ export async function prune(db, days) {
     ORDER BY received_at LIMIT 5000 FOR UPDATE SKIP LOCKED)`,
     [days],
   );
+  // Tag keys expire with the events that carried them; dictionary rows are tiny and cheap to sweep.
+  await db.query(`DELETE FROM project_tag_keys WHERE last_seen < now() - ($1::int * interval '1 day')`, [days]);
   return result.rowCount;
 }

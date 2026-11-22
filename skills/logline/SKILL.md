@@ -56,8 +56,11 @@ Use string literals or template literals as the first argument when source-prefi
 
 `configureLogline` merges supplied fields. A filter returning false rejects a record before console output and plugin dispatch. Throttling accepts milliseconds or `{ ms, key }`; false disables it. Without a custom key, the first string argument identifies duplicates.
 
+Tags attach flat string key/value pairs to records, Sentry-style: globally via `configureLogline({ tags: {...} })` and per call via `LOG({ message, tags: {...} })`, with per-call entries winning on conflicts. Keys must match `^[A-Za-z_][A-Za-z0-9_-]{0,63}$`; values are non-empty masked strings capped at 256 characters; at most 16 entries survive. Tags persist in IndexedDB records and, once reported, become `tags.*` fields for filtering, search and aggregation on the server.
+
 ```ts
 configureLogline({
+  tags: { app: 'shop' },
   filter: ({ messageText }) => !messageText?.includes('secret'),
   throttle: { ms: 500, key: ({ level, args }) => `${level}-${String(args[0])}` },
 });

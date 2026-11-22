@@ -29,6 +29,37 @@ describe('reporting intake snapshot', () => {
     expect(createSnapshot(record(['second']), 'delivery-B')?.event.id).toBe('delivery-B');
   });
 
+  it('copies flat record tags, masks sensitive keys and drops empty results', () => {
+    const tagged = createSnapshot(
+      record(['tagged'], { tags: { app: 'shop', password: 'fixture-secret', 'bad key': 'dropped' } }),
+      'tagged-A',
+    )?.event;
+    expect(tagged?.tags).toEqual({ app: 'shop', password: '***' });
+    expect(tagged?.tags && Object.isFrozen(tagged.tags)).toBe(true);
+    const untagged = createSnapshot(record(['plain'], { tags: {} }), 'tagged-B')?.event;
+    expect(untagged).not.toHaveProperty('tags');
+    const accessor = createSnapshot(
+      record(['trap'], {
+        tags: Object.defineProperty({}, 'boom', {
+          enumerable: true,
+          get() {
+            throw new Error('invoked');
+          },
+        }),
+      }),
+      'tagged-C',
+    )?.event;
+    expect(accessor).not.toHaveProperty('tags');
+  });
+
+  it('re-cleans tags supplied by a transform', () => {
+    const e = createSnapshot(record(['plain']), 'tagged-D', undefined, (event) => ({
+      ...event,
+      tags: { release: '2.0.0-beta.1', token: 'fixture' },
+    }))?.event;
+    expect(e?.tags).toEqual({ release: '2.0.0-beta.1', token: '***' });
+  });
+
   it('redacts a project key inside a DSN and does not capture service as built-in metadata', () => {
     const key = `llpk_${'x'.repeat(43)}`;
     const event = createSnapshot(record([`destination https://${key}@telemetry.example.org/project`]), 'dsn', {

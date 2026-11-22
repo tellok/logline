@@ -1,4 +1,5 @@
 import {
+  type LogTags,
   type LogThrottleConfig,
   type LogThrottleKeyResolver,
   type LogTimeProvider,
@@ -7,6 +8,7 @@ import {
   type LoglineConfigInput,
   type LoglinePlugin,
 } from './types';
+import { normalizeTags } from './utils';
 
 /**
  * Resolve the default throttle key; records without a key are not throttled.
@@ -47,6 +49,7 @@ let configState: LoglineConfig = {
   filter: undefined,
   throttle: undefined,
   plugins: [],
+  tags: undefined,
   timeProvider: defaultTimeProvider,
   revision: 0,
 };
@@ -134,10 +137,15 @@ export const updateLoglineConfig = (input: LoglineConfigInput): LoglineConfig =>
     input.plugins === undefined
       ? configState.plugins
       : input.plugins.filter((plugin) => !automaticPlugins.includes(plugin));
+  const nextTags = (): LogTags | undefined => {
+    if (input.tags === undefined) return configState.tags;
+    return normalizeTags(input.tags);
+  };
   configState = {
     filter: input.filter === undefined ? configState.filter : input.filter,
     throttle: nextThrottle,
     plugins: nextPlugins,
+    tags: nextTags(),
     timeProvider: input.timeProvider ?? configState.timeProvider,
     revision: configState.revision + 1,
   };
@@ -152,6 +160,7 @@ export const resetLoglineConfig = (): LoglineConfig => {
     filter: undefined,
     throttle: undefined,
     plugins: [],
+    tags: undefined,
     timeProvider: defaultTimeProvider,
     revision: configState.revision + 1,
   };

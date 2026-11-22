@@ -6,6 +6,7 @@ export { defaultThrottleKeyResolver, getLoglineConfig, resetLoglineConfig } from
 export {
   type LogFilter,
   type LogRecord,
+  type LogTags,
   type LogThrottleConfig,
   type LogThrottleKey,
   type LogThrottleKeyResolver,

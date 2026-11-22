@@ -88,11 +88,12 @@ export default defineConfig({
 
 `configureLogline` 用于在运行时配置日志系统的全局行为，如过滤、节流、插件扩展等。
 
-| 参数名     | 类型                  | 默认值                  | 用途                                                   |
-| :--------- | :-------------------- | :---------------------- | :----------------------------------------------------- |
-| `filter`   | `(record) => boolean` | `undefined`             | 全局日志过滤器，返回 `false` 则丢弃日志                |
-| `throttle` | `number \| object`    | `undefined`（默认关闭） | 全局日志节流配置                                       |
-| `plugins`  | `LoglinePlugin[]`     | `[]`                    | 日志插件列表，用于扩展日志处理能力（如写入 IndexedDB） |
+| 参数名     | 类型                     | 默认值                  | 用途                                                   |
+| :--------- | :----------------------- | :---------------------- | :----------------------------------------------------- |
+| `filter`   | `(record) => boolean`    | `undefined`             | 全局日志过滤器，返回 `false` 则丢弃日志                |
+| `throttle` | `number \| object`       | `undefined`（默认关闭） | 全局日志节流配置                                       |
+| `plugins`  | `LoglinePlugin[]`        | `[]`                    | 日志插件列表，用于扩展日志处理能力（如写入 IndexedDB） |
+| `tags`     | `Record<string, string>` | `undefined`             | 全局标签，合并进每条日志记录                           |
 
 ### 全局过滤 (`filter`)
 
@@ -131,6 +132,15 @@ configureLogline({
     key: ({ level, args }) => `${level}-${String(args[0])}`,
   },
 });
+```
+
+### 标签 (`tags`)
+
+以 Sentry 风格为日志记录附加扁平的字符串键值对。可在全局配置中设置，也可在单次调用的输入对象上设置；冲突时单次调用的条目优先。键必须匹配 `^[A-Za-z_][A-Za-z0-9_-]{0,63}$`；值为非空字符串，最长 256 个字符并经过脱敏（敏感键名直接记为 `***`）。每条记录最多保留 16 个条目。标签随 IndexedDB 记录一起持久化；上报后在日志查询中成为可过滤、可搜索、可聚合的 `tags.*` 字段，服务端会为所有标签对建立索引。
+
+```ts
+configureLogline({ tags: { app: 'shop' } });
+LOG({ message: '结账完成', tags: { experiment: 'one-click' } });
 ```
 
 ### 插件扩展 (`plugins`)

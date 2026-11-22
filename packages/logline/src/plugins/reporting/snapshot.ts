@@ -16,6 +16,10 @@ export interface ReportingEvent {
   readonly message: string;
   readonly fields?: ReportingFields;
   readonly context?: ReportingFields;
+  /**
+   * Flat string key/value tags; filterable, searchable and aggregatable on the server.
+   */
+  readonly tags?: ReportingFields;
 }
 
 // JS has no lazy bounded own-key iterator. Even for-in can materialize millions of names before its first iteration.
@@ -137,6 +141,23 @@ function budget(keys: ReadonlySet<string>) {
     }
     return Object.freeze(out);
   }
+  // Tags carry application-defined key names, so they cannot be probed from the schema list.
+  // Object.keys never invokes accessors; values are read through own data descriptors only.
+  function tags(input: object): ReportingFields {
+    const out: Record<string, ReportingJsonValue> = Object.create(null);
+    let count = 0;
+    for (const key of Object.keys(input)) {
+      if (count >= 16 || remainingNodes <= 0) break;
+      if (!/^[A-Za-z_][A-Za-z0-9_-]{0,63}$/.test(key)) continue;
+      const property = own(input, key);
+      if (property === absent || property === accessor || typeof property !== 'string' || property.length === 0)
+        continue;
+      count += 1;
+      remainingNodes -= 1;
+      out[key] = isSensitiveKey(key) ? '***' : text(property, 256);
+    }
+    return Object.freeze(out);
+  }
   function list(input: readonly unknown[], start: number, depth: number): readonly ReportingJsonValue[] {
     const out: ReportingJsonValue[] = [];
     let index = start;
@@ -174,7 +195,7 @@ function budget(keys: ReadonlySet<string>) {
       ancestors.delete(input);
     }
   }
-  return { text, fields, value, list };
+  return { text, fields, value, list, tags };
 }
 
 /**
@@ -224,6 +245,7 @@ export function createSnapshot(
       /\b(?:bearer|basic)\s*$/i.test(message);
     const trailing = args.length > start ? (sensitive ? '***' : copy.list(args, start, 0)) : undefined;
     const identity = { id, level, timestamp: epochMs };
+    const recordTags = record.tags && typeof record.tags === 'object' ? copy.tags(record.tags) : undefined;
     let event: ReportingEvent = Object.freeze({
       ...identity,
       message,
@@ -235,6 +257,7 @@ export function createSnapshot(
         ...(trailing !== undefined && { arguments: trailing }),
       }),
       ...(context && { context: copy.fields(context, 0, true) }),
+      ...(recordTags && Object.keys(recordTags).length > 0 && { tags: recordTags }),
     });
     if (transform) {
       const changed = transform(event);
@@ -245,6 +268,7 @@ export function createSnapshot(
         if (typeof transformedMessage !== 'string' || transformedMessage === accessor) return undefined;
         const customFields = own(changed, 'fields');
         const customContext = own(changed, 'context');
+        const customTags = own(changed, 'tags');
         event = Object.freeze({
           ...identity,
           message: clean.text(transformedMessage),
@@ -255,6 +279,7 @@ export function createSnapshot(
           ...(customContext && typeof customContext === 'object'
             ? { context: clean.fields(customContext, 0, true) }
             : {}),
+          ...(customTags && typeof customTags === 'object' ? { tags: clean.tags(customTags) } : {}),
         });
       }
     }

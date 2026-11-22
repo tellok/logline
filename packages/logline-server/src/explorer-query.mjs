@@ -220,7 +220,7 @@ export async function metadata(s, b, fields) {
     return { ...page(rs, offset, limit), range: frame(q) };
   }
   const { rows: rs } = await s.db.query(
-    `SELECT e.fields,e.context FROM log_events e WHERE ${q.where} ORDER BY e.timestamp_ms DESC,e.project_id,e.event_id LIMIT 201`,
+    `SELECT e.fields,e.context,e.tags FROM log_events e WHERE ${q.where} ORDER BY e.timestamp_ms DESC,e.project_id,e.event_id LIMIT 201`,
     v,
   );
   const names = new Map(Object.entries(fieldTypes).map(([name, type]) => [name, new Set([type])]));
@@ -244,6 +244,23 @@ export async function metadata(s, b, fields) {
   for (const r of rs.slice(0, 200)) {
     collect('fields', r.fields, 1);
     collect('context', r.context, 1);
+    collect('tags', r.tags, 1);
+  }
+  // The ingest-time dictionary survives beyond the 200-event sample so live tag keys stay discoverable.
+  const { rows: discovered } = await s.db.query(
+    `SELECT tag_key FROM project_tag_keys WHERE project_id=ANY($1::uuid[])`,
+    [v[0]],
+  );
+  for (const { tag_key } of discovered) {
+    const name = `tags.${tag_key}`;
+    if (!names.has(name)) {
+      if (names.size >= 512) {
+        incomplete = true;
+        continue;
+      }
+      names.set(name, new Set());
+    }
+    names.get(name).add('string');
   }
   const items = [...names]
     .sort(([a], [b]) => a.localeCompare(b))

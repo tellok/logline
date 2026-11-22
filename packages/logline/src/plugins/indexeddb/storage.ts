@@ -26,6 +26,11 @@ export interface IndexedDBLogRecord {
   readonly id: number;
   readonly level: number;
   readonly message: string;
+  /**
+   * Structured tags carried with the record; stored without indexes since
+   * local queries stay time-ordered.
+   */
+  readonly tags?: Readonly<Record<string, string>>;
 }
 
 export interface IndexedDBLoggingPlugin extends LoglinePlugin {
@@ -426,6 +431,7 @@ const createIndexedDBLoggingPluginInstance = (
             id,
             level: LOG_LEVEL_INDEX[record.level],
             message,
+            ...(record.tags && { tags: record.tags }),
           };
           try {
             await persistLog(db, storeName, entry, maxEntries);

@@ -33,6 +33,8 @@ Later calls to `createIndexedDBLoggingPlugin()` reuse the automatic instance and
 
 `storage.getLogs(count?, query?)` queries that instance's database. The exported `getLogs(count?, query?)` selects the automatically named database and cannot query an explicitly named database. The default count is 100. Queries support `from`, `to`, and `level`; filtering happens during cursor scanning, so the requested count applies to matching records.
 
+Each returned record carries its millisecond `id`, `level`, `message` and, when set on the log call or global configuration, its `tags` map. Tags are plain record data: local queries stay time-ordered and do not index them.
+
 ```ts
 import { getLogs } from 'logline/plugin/indexeddb';
 

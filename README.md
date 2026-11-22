@@ -40,6 +40,15 @@ configureLogline({
 });
 ```
 
+## Tags
+
+Tags attach flat string key/value pairs to records, Sentry-style. Configure global tags and per-call tags on an input object; per-call entries win on conflicts. Keys must match `^[A-Za-z_][A-Za-z0-9_-]{0,63}$`; values are non-empty strings of at most 256 characters and pass through masking (sensitive key names become `***`). A record keeps at most 16 entries. Tags persist alongside IndexedDB records and, when reported, become filterable, searchable and aggregatable `tags.*` fields in the Logs Explorer, with every pair indexed on the server.
+
+```ts
+configureLogline({ tags: { app: 'shop' } });
+LOG({ message: 'Checkout finished', tags: { experiment: 'one-click' } });
+```
+
 ## Upload to your own server
 
 Install `logline-server-reporter@beta` alongside the matching `logline@beta` release. The reporter is optional: importing Logline alone sends nothing. Configure one reporter per destination using a project DSN. This example runs in a trusted application process:

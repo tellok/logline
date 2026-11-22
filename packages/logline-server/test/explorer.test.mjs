@@ -157,6 +157,50 @@ test(
         await post('rows', { query: { where: { field: 'message', op: 'regex', value: '(unsafe)+' } } }, 400);
       });
 
+      await t.test('tags filter, group, project and surface through field discovery', async () => {
+        await upload(alpha, [
+          entry('tag-1', 1, 'tagged one', { tags: { experiment: 'checkout', tier: 'gold' } }),
+          entry('tag-2', 2, 'tagged two', { tags: { experiment: 'checkout', tier: 'free' } }),
+          entry('tag-3', 3, 'tagged three', { tags: { experiment: 'search' } }),
+        ]);
+        const tagged = await post('rows', {
+          query: { ...all, where: { field: 'tags.experiment', op: 'eq', value: 'checkout' } },
+          columns: ['eventId', 'tags.experiment', 'tags.tier'],
+          sort: 'asc',
+        });
+        assert.deepEqual(tagged.items, [
+          { eventId: 'tag-1', 'tags.experiment': 'checkout', 'tags.tier': 'gold' },
+          { eventId: 'tag-2', 'tags.experiment': 'checkout', 'tags.tier': 'free' },
+        ]);
+        // Inequality extracts the value; events missing the key stay excluded.
+        const excluded = await post('rows', {
+          query: { ...all, where: { field: 'tags.experiment', op: 'neq', value: 'checkout' } },
+          columns: ['eventId'],
+          sort: 'asc',
+        });
+        assert.deepEqual(excluded.items, [{ eventId: 'tag-3' }]);
+        const grouped = await post('groups', { query: all, groupBy: ['tags.experiment'] });
+        // Events without the key group under null, matching fields.* grouping semantics.
+        assert.deepEqual(grouped.items, [
+          { group: [null], value: 5 },
+          { group: ['checkout'], value: 2 },
+          { group: ['search'], value: 1 },
+        ]);
+        const fields = await post('fields', {});
+        const discovered = fields.items.find((f) => f.name === 'tags.experiment');
+        assert.deepEqual(discovered.types, ['string']);
+        assert.ok(discovered.operators.includes('eq'));
+        // The ingest-time dictionary keeps keys discoverable beyond the metadata sample.
+        const { rows: dictionary } = await pool.query(
+          `SELECT tag_key FROM ${schema}.project_tag_keys WHERE project_id=$1 ORDER BY tag_key`,
+          [alpha],
+        );
+        assert.deepEqual(
+          dictionary.map((r) => r.tag_key),
+          ['experiment', 'tier'],
+        );
+      });
+
       await t.test('shared filters drive chart buckets, groups, and byte- and row-bounded exports', async () => {
         const spec = { query, groupBy: ['level'], metric: { op: 'sum', field: 'fields.duration' } };
         const groups = await post('groups', spec);

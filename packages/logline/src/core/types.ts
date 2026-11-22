@@ -2,6 +2,12 @@ import { type LogLevelName } from './constants';
 
 export type LogMessage = string | TemplateStringsArray;
 
+/**
+ * Flat string key/value pairs attached to a record, Sentry-style.
+ * Keys must match /^[A-Za-z_][A-Za-z0-9_-]{0,63}$/ so every stored tag stays queryable.
+ */
+export type LogTags = Readonly<Record<string, string>>;
+
 export interface LogInputObject {
   /**
    * Key used for throttling and related processing.
@@ -19,6 +25,10 @@ export interface LogInputObject {
    * Arguments equivalent to subsequent parameters of a non-object call.
    */
   readonly params?: readonly unknown[];
+  /**
+   * Per-record tags merged over the configured global tags.
+   */
+  readonly tags?: LogTags;
 }
 
 export type LogInput = LogInputObject | LogMessage;
@@ -48,6 +58,10 @@ export interface LogRecord {
    * Arguments following a string message, or all original arguments otherwise.
    */
   readonly messageArgs: readonly unknown[];
+  /**
+   * Normalized global and per-record tags; absent when neither is set.
+   */
+  readonly tags?: LogTags;
   readonly timestamp: LogTimestamp;
 }
 
@@ -96,6 +110,10 @@ export interface LoglineConfig {
    */
   readonly plugins: readonly LoglinePlugin[];
   /**
+   * Global tags merged into every record, below per-record tags.
+   */
+  readonly tags?: LogTags;
+  /**
    * Provider for custom timestamp generation.
    */
   readonly timeProvider: LogTimeProvider;
@@ -120,6 +138,10 @@ export interface LoglineConfigInput {
    * Plugins extending processing with reporting, storage, or other behavior.
    */
   readonly plugins?: readonly LoglinePlugin[];
+  /**
+   * Global tags merged into every record; pass an empty object to clear.
+   */
+  readonly tags?: LogTags;
   /**
    * Provider for custom timestamp generation.
    */

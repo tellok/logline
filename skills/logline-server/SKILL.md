@@ -10,7 +10,7 @@ Use the connected `logline_*` tools. The MCP client supplies a user's `logs:read
 ## Establish scope
 
 1. Call `logline_projects` and select the immutable `projectId` matching the requested project. Follow `nextOffset` if needed. If multiple projects fit the description, ask which one. Do not substitute a similarly named project on denial. Authorization follows the current user's grants, not a project list captured when their token was issued.
-2. Set `query.projectIds` explicitly and constrain `range` to the requested interval. Start with `{ "last": "1h" }` if the user gives none; report that choice. Use `logline_selectors` for observed project/environment pairs and `logline_fields` for custom field names and types. Do not assume the application emits an exception signature or a release ID.
+2. Set `query.projectIds` explicitly and constrain `range` to the requested interval. Start with `{ "last": "1h" }` if the user gives none; report that choice. Use `logline_selectors` for observed project/environment pairs and `logline_fields` for custom field names and types, including `tags.*` entries from the per-project tag dictionary. Tag equality (`{ "field": "tags.key", "op": "eq", "value": "..." }`) is index-accelerated for any key without prior declaration. Do not assume the application emits an exception signature or a release ID.
 3. Reuse the same query for rows, counts, buckets and examples. Pin absolute `start` and `end` (ISO timestamps with timezone) when comparing multiple calls so a moving window doesn't change your denominator. Use `columns` and small `limit`s for samples; rows are examples, not totals.
 
 ## Pick a path
