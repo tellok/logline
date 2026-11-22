@@ -59,6 +59,19 @@ setTags({ experiment: 'one-click', region: 'eu' });
 removeTag('experiment');
 ```
 
+For tags that apply to just one code path, wrap the work in `withScope`, Sentry-style. Records logged inside the callback merge scope tags between global and per-call tags; nested scopes apply outer-to-inner with inner entries winning. A synchronous callback detaches its scope on return or throw; an async callback keeps its scope until the returned promise settles (concurrent async scopes may share tags, as browsers lack AsyncLocalStorage).
+
+```ts
+import { LOG, withScope } from 'logline';
+
+const result = await withScope(async (scope) => {
+  scope.setTag('requestId', request.id);
+  scope.setTags({ handler: 'checkout' });
+  LOG('Request started'); // carries requestId and handler
+  return handle(request);
+});
+```
+
 ## Upload to your own server
 
 Install `logline-server-reporter@beta` alongside the matching `logline@beta` release. The reporter is optional: importing Logline alone sends nothing. Configure one reporter per destination using a project DSN. This example runs in a trusted application process:

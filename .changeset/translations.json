@@ -1,5 +1,5 @@
 {
-  "event-tags": "端到端新增 Sentry 风格事件标签：支持全局与单次调用的扁平字符串标签及 setTag/setTags/removeTag 命令式管理，标签随 IndexedDB 记录与上报快照持久化，服务端 tags 列通过 GIN 索引覆盖所有标签对，日志查询支持按标签过滤与聚合，并按项目自动发现标签键、随保留期过期清理。",
+  "event-tags": "端到端新增 Sentry 风格事件标签：支持全局与单次调用的扁平字符串标签、setTag/setTags/removeTag 命令式管理及 withScope 局部作用域，标签随 IndexedDB 记录与上报快照持久化，服务端 tags 列通过 GIN 索引覆盖所有标签对，日志查询支持按标签过滤与聚合，并按项目自动发现标签键、随保留期过期清理。",
   "self-hosted-reporting": "新增可选的异步上报插件、基于项目 DSN 的自托管服务上传包，以及日志接收、管理、查询和 MCP 服务。",
   "first-v2-beta": "推出 TypeScript v2 beta，提供结构化日志、Vite 集成、IndexedDB 持久化、启动阶段捕获与自动导入。",
   "documentation-pages": "新增双语在线文档，在经核验的 beta 版本发布后部署到 GitHub Pages。",

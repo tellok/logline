@@ -153,6 +153,19 @@ setTags({ experiment: 'one-click', region: 'eu' });
 removeTag('experiment');
 ```
 
+如果标签只应作用于某段代码路径，可以用 Sentry 风格的 `withScope` 包裹。回调内记录的日志会把 scope 标签合并到全局标签与单次调用标签之间；嵌套 scope 按外层到内层生效，冲突时内层优先。同步回调在返回或抛错时解除 scope；async 回调的 scope 会保持到返回的 promise 结束（浏览器没有 AsyncLocalStorage，并发的异步 scope 之间可能共享标签）。
+
+```ts
+import { LOG, withScope } from 'logline';
+
+const result = await withScope(async (scope) => {
+  scope.setTag('requestId', request.id);
+  scope.setTags({ handler: 'checkout' });
+  LOG('请求开始'); // 携带 requestId 和 handler
+  return handle(request);
+});
+```
+
 ### 插件扩展 (`plugins`)
 
 通过插件机制可在打印日志的同时执行额外动作，如日志上报、持久化存储等。

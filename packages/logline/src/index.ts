@@ -11,6 +11,7 @@ export {
 } from './core/logger';
 
 export { peekObject } from './core/utils';
+export { withScope, type LogScope } from './core/scope';
 
 export { createLoglineAutoImport, loglineAutoImportResolvers } from './auto-import';
 export {

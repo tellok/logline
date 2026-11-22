@@ -2,6 +2,7 @@ import { LOG_LEVEL_INDEX, LOG_LEVELS, type LogLevelName } from './constants';
 import { isTestEnv } from './env';
 import { maskString } from './masking';
 import { getLoglineConfig } from './state';
+import { resolveScopeTags } from './scope';
 import {
   type LoggerFunction,
   type LogInput,
@@ -259,7 +260,8 @@ const buildRecord = (level: LogLevelName, input: NormalizedLogInput, config: Log
     scope,
     messageText: input.messageText,
     messageArgs: input.messageArgs,
-    tags: mergeTags(config.tags, input.tags),
+    // Priority: global tags, then active scopes outer-to-inner, then per-call tags.
+    tags: mergeTags(mergeTags(config.tags, resolveScopeTags()), input.tags),
     timestamp: config.timeProvider.now(),
   };
 };

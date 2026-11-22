@@ -2,4 +2,4 @@
 logline: minor
 ---
 
-Add Sentry-style event tags end to end: global and per-call flat string tags on log records with imperative `setTag`/`setTags`/`removeTag` management, tags persisted with IndexedDB records and reporting snapshots, a server `tags` column with a GIN index covering every pair, tag-aware filtering and aggregation in the Logs Explorer, and automatic per-project tag key discovery with retention-based expiry.
+Add Sentry-style event tags end to end: global and per-call flat string tags on log records with imperative `setTag`/`setTags`/`removeTag` management and `withScope` for path-local scoping, tags persisted with IndexedDB records and reporting snapshots, a server `tags` column with a GIN index covering every pair, tag-aware filtering and aggregation in the Logs Explorer, and automatic per-project tag key discovery with retention-based expiry.
