@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import test from 'node:test';
 import pg from 'pg';
-import { ingestOrigins } from '../src/ingest-origin.mjs';
+import { ingestOrigins, ingestOriginHeaders } from '../src/ingest-origin.mjs';
 import { startServer } from '../src/server.mjs';
 
 const site = 'https://app.example.org';
-test('browser ingestion accepts exact origins only and is disabled by default', () => {
+test('browser ingestion accepts exact origins when configured and is unrestricted by default', () => {
   assert.equal(ingestOrigins().size, 0);
   assert.deepEqual([...ingestOrigins(`${site}, http://localhost:8080`)], [site, 'http://localhost:8080']);
   for (const invalid of [
@@ -19,6 +19,47 @@ test('browser ingestion accepts exact origins only and is disabled by default', 
     'https://user@app.example.org',
   ])
     assert.throws(() => ingestOrigins(invalid), /LOGLINE_INGEST_ORIGINS/);
+});
+
+const request = (method, headers = {}) => ({ method, headers });
+
+test('an empty origin allowlist accepts any browser origin and preflight', () => {
+  const allowed = ingestOrigins();
+  assert.equal(allowed.size, 0);
+  assert.deepEqual(ingestOriginHeaders(request('POST', { origin: site }), allowed), {
+    'access-control-allow-origin': site,
+    vary: 'Origin',
+    'access-control-expose-headers': 'Retry-After',
+  });
+  const extension = 'chrome-extension://abcdefghijklmnop';
+  assert.equal(
+    ingestOriginHeaders(request('POST', { origin: extension }), allowed)['access-control-allow-origin'],
+    extension,
+  );
+  assert.deepEqual(ingestOriginHeaders(request('POST'), allowed), {});
+  const preflight = ingestOriginHeaders(
+    request('OPTIONS', {
+      origin: extension,
+      'access-control-request-method': 'POST',
+      'access-control-request-headers': 'authorization,content-type',
+    }),
+    allowed,
+  );
+  assert.equal(preflight['access-control-allow-origin'], extension);
+  assert.equal(preflight['access-control-allow-methods'], 'POST');
+});
+
+test('a nonempty origin allowlist still restricts browser requests to exact origins', () => {
+  const allowed = ingestOrigins(site);
+  assert.deepEqual(ingestOriginHeaders(request('POST', { origin: site }), allowed), {
+    'access-control-allow-origin': site,
+    vary: 'Origin',
+    'access-control-expose-headers': 'Retry-After',
+  });
+  assert.throws(
+    () => ingestOriginHeaders(request('POST', { origin: 'https://evil.example.org' }), allowed),
+    /Browser origin not allowed for ingestion\./,
+  );
 });
 
 test(

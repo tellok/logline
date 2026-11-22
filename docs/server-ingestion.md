@@ -6,7 +6,7 @@ Use a named, write-only [project key](./server-admin.md) bound to the target pro
 
 The reporter accepts `https://<key>@<host>[/prefix]/<projectUUID>` (HTTP only for loopback). It sends requests to `<deployment-root>/api/v1/logs` without credentials in the URL. Keep DSNs and Authorization headers out of logs.
 
-**Browser uploads:** Set `LOGLINE_INGEST_ORIGINS` to a comma-separated list of exact browser origins, e.g. `https://app.example.org`. By default, uploads carrying `Origin` are denied; backend uploads without `Origin` are unaffected. The upload route supports `OPTIONS` preflight for `POST` with `Authorization` and `Content-Type`. An origin allowlist is a browser policy, not proof of event origin or protection against spam.
+**Browser uploads:** Set `LOGLINE_INGEST_ORIGINS` to a comma-separated list of exact browser origins, e.g. `https://app.example.org`. An empty setting accepts any browser origin; list origins to restrict browser uploads. Backend uploads without `Origin` are always unaffected. The upload route supports `OPTIONS` preflight for `POST` with `Authorization` and `Content-Type`. An origin allowlist is a browser policy, not proof of event origin or protection against spam.
 
 ## Upload a batch
 
