@@ -16,6 +16,23 @@ pnpm add logline@beta
 
 已发布版本请查看[发布状态](https://www.npmjs.com/package/logline?activeTab=versions)。开发要求 Node.js 24 和 pnpm 10.20.0。
 
+## 上传到自托管服务
+
+同时安装同一 beta 版本的 `logline@beta` 和 `logline-server-reporter@beta`。仅导入 Logline 不会发送网络请求。每个目的地单独创建 reporter，只需配置该项目的 DSN。以下示例运行在可信应用进程内：
+
+```ts
+import { configureLogline } from 'logline';
+import { createLoglineServerReporter } from 'logline-server-reporter';
+
+const reporter = createLoglineServerReporter({
+  dsn: process.env.LOGLINE_DSN!,
+  reporting: { sampleRate: 0.1, levelSampleRates: { ERROR: 1 } },
+});
+configureLogline({ plugins: [reporter] });
+```
+
+通过管理接口创建项目上报密钥，再构造 `https://<密钥>@<域名>[/部署前缀]/<项目 UUID>`。DSN 只允许向绑定项目写入，不依赖成员身份。浏览器端的 DSN 是公开的，拿到它的人可以提交事件；后端请用独立密钥，可信审计事件应由后端生成。浏览器请求带有 Origin 时，需在服务端配置 `LOGLINE_INGEST_ORIGINS`。没有默认云端地址，不持久化待发队列，也不上传 IndexedDB 历史记录。参阅[上报契约](./docs/reporting.zh-CN.md)、[写入接口](./docs/server-ingestion.zh-CN.md)、[管理接口](./docs/server-admin.zh-CN.md)、[日志查询](./docs/server-explorer.zh-CN.md)、[MCP 工具](./docs/server-mcp.zh-CN.md)和[部署及性能指南](./docs/server-operations.zh-CN.md)。
+
 ## 迁移与单实例
 
 从 v1 升级时，需要将构造函数与存储协议调用调整为 v2 的具名日志函数与插件 API。v2 不会自动导入历史数据库。详见[迁移说明](./docs/migration-v2.zh-CN.md)。
@@ -283,7 +300,7 @@ export default defineConfig({
 
 ## Workspace 开发
 
-仓库采用 pnpm workspace 与 Nx，库位于 `packages/logline`，`apps/*` 为未来应用保留。固定 Node.js 24.22.1 LTS 与 pnpm 11.25.0，支持自动切换，禁用严格版本校验。命令、缓存和打包说明见 [Workspace 开发指南](./docs/workspace.zh-CN.md)。
+仓库采用 pnpm workspace 与 Nx，包含 `logline` 核心库、独立发布的 `logline-server-reporter` 上传包和可自行部署的 `logline-server`。固定 Node.js 24.22.1 LTS 与 pnpm 11.25.0，支持自动切换，禁用严格版本校验。命令、缓存和打包说明见 [Workspace 开发指南](./docs/workspace.zh-CN.md)。
 
 ## 发布流程
 

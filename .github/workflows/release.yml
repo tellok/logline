@@ -37,6 +37,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
   publish:
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['127.0.0.1::5432']
+        options: --health-cmd pg_isready --health-interval 2s --health-timeout 3s --health-retries 20
     needs: eligibility
     if: needs.eligibility.outputs.eligible == 'true'
     runs-on: 'ubuntu-latest'
@@ -59,10 +66,74 @@ jobs:
       - run: npm install --global npm@11.15.0
       - run: pnpm install --frozen-lockfile
       - run: pnpm run verify
+        env:
+          TEST_DATABASE_URL: postgres://postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/postgres
       - run: pnpm run release:beta
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERIFIED_SHA: ${{ needs.eligibility.outputs.source_sha }}
+  server-image:
+    needs: [eligibility, publish]
+    if: needs.eligibility.outputs.eligible == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPOSITORY: ghcr.io/tellok/logline-server
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.eligibility.outputs.source_sha }}
+          persist-credentials: false
+      - name: Resolve exact published release
+        id: release
+        run: |
+          tag=v$(node -p "require('./packages/logline/package.json').version")
+          test "$(gh release view "$tag" --json tagName --jq .tagName)" = "$tag"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - uses: oras-project/setup-oras@v1
+        with:
+          version: 1.3.0
+      - name: Preserve any previously published release index
+        id: existing
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          SOURCE_SHA: ${{ needs.eligibility.outputs.source_sha }}
+        run: |
+          image="$REPOSITORY:$RELEASE_TAG"
+          if digest=$(oras resolve "$image" 2>"$RUNNER_TEMP/resolve-error"); then
+            revision=$(oras manifest fetch "$REPOSITORY@$digest" | jq -er '.annotations["org.opencontainers.image.revision"]')
+            test "$revision" = "$SOURCE_SHA"
+            echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          elif ! grep -Eiq 'manifest unknown|name unknown|manifest_unknown|name_unknown|not found' "$RUNNER_TEMP/resolve-error"; then
+            cat "$RUNNER_TEMP/resolve-error" >&2; exit 1
+          fi
+      - name: Publish both architectures in one image index
+        if: steps.existing.outputs.digest == ''
+        id: image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: packages/logline-server/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ env.REPOSITORY }}:${{ steps.release.outputs.tag }}
+          outputs: type=image,push=true,oci-mediatypes=true
+          labels: org.opencontainers.image.source=https://github.com/tellok/logline
+          annotations: index:org.opencontainers.image.revision=${{ needs.eligibility.outputs.source_sha }}
+      - name: Verify pulls and attach the same immutable OCI index and deployment assets
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          IMAGE_DIGEST: ${{ steps.existing.outputs.digest || steps.image.outputs.digest }}
+        run: bash deploy/package-release-image.sh
   documentation:
     needs: [eligibility, publish]
     if: needs.eligibility.outputs.eligible == 'true'

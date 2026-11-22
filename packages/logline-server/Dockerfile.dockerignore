@@ -1,0 +1,9 @@
+**
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!packages/
+!packages/logline-server/
+!packages/logline-server/package.json
+!packages/logline-server/src/
+!packages/logline-server/src/**

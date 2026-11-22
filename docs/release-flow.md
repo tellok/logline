@@ -2,13 +2,13 @@
 
 English | [简体中文](./release-flow.zh-CN.md)
 
-The default branch is discovered from GitHub (currently master). The previous default-branch snapshot is preserved as v1. The package is logline, and Changesets CLI is pinned to 2.29.7. The first release is 2.0.0-beta.0; subsequent changes remain in beta prerelease mode until a separate stable-v2 decision.
+The default branch is discovered from GitHub (currently master). The previous default-branch snapshot is preserved as v1. Changesets CLI 2.29.7 versions the public `logline` and `logline-server-reporter` npm packages as one fixed group. The private `logline-server` is distributed as a container image, not an npm package. The first release is 2.0.0-beta.0; subsequent changes remain in beta prerelease mode until a separate stable-v2 decision.
 
 ## Events and version decisions
 
 1. A feature PR adds an English Changeset and a Chinese summary in translations.json. Native PR checks validate the latest source merged into the latest target.
 2. A default-branch push detects unconsumed Changesets before dependency installation. README, hidden files, metadata, and already-consumed prerelease IDs are excluded. Malformed candidates fail during CLI versioning.
-3. If changes exist, the lightweight preparation workflow consumes them using the pinned CLI, generates package version, bilingual changelogs, prerelease bookkeeping, and public provenance, then creates or updates codex/version-packages. It does not build, publish, or upload product files.
+3. If changes exist, the lightweight preparation workflow consumes them using the pinned CLI, generates matching beta versions, bilingual changelog chapters for each package, prerelease bookkeeping, and a version plan identifying both packages, then creates or updates codex/version-packages. It does not build, publish, or upload product files.
 4. The managed version PR shows the proposed version, base source SHA, package, channel, and user-facing changes. It is not automatically merged. This initial rollout is merged under the user's explicit authorization; subsequent merges remain maintainer decisions.
 5. Only a merged, managed version PR may authorize delivery. Ordinary pushes, feature PRs, tags, and manual runs without valid version-PR provenance cannot publish.
 
@@ -34,7 +34,7 @@ The verification command runs type checks, lint, release-contract tests, product
 
 A separate CI matrix tests the packed package against the latest stable release within each supported Vite major (5, 6, 7, and 8). Each consumer installs its own Vite and checks strict public types, development transforms and dependency optimization, production stripping, source attribution, base injection, IndexedDB initialization, HTML startup capture, and sourcemaps. Run `pnpm run build && pnpm run test:vite` locally, or append `-- 5` to select one major. The repository toolchain stays on Vite 6 so Vitest can run independently of consumer Vite versions.
 
-PR builds stay local and never become release inputs. After source eligibility succeeds, the release job checks out that exact merge source, repeats quality verification, builds once, and packs the validated dist with scripts disabled. It publishes this exact tarball to npm with beta and uploads the same tarball and its digest/source manifest as durable GitHub prerelease assets. It does not rebuild for another consumer or upload a CI transfer copy.
+PR builds stay local and never become release inputs. After source eligibility succeeds, the release job checks out that exact merge source, repeats quality verification, builds once, and packs the validated dist with scripts disabled. It publishes each exact tarball to npm with `beta` and uploads both tarballs and their digest/source manifest as GitHub prerelease assets. It does not rebuild for another consumer or upload a CI transfer copy.
 
 Release notes come from exactly one chapter for the actual version in each changelog. Missing or duplicate chapters fail. No previous chapters or pending changes are included. Existing npm versions, tags, and release assets are reused only if their immutable identities/digests match; conflicts are rejected, never overwritten.
 
@@ -49,11 +49,11 @@ Release notes come from exactly one chapter for the actual version in each chang
 | Verified beta delivery      | Contents write, PR read, id-token write                    | Local validated tarball; durable npm/GitHub delivery |
 | Ref cleanup                 | Contents write, actions read; workflow event revision      | Exact completed synthetic refs only                  |
 
-npm trusted publishing is configured for tellok/logline, release.yml, no environment, and direct npm publish. The runner uses Node.js 24 and npm 11.15.0. No persistent npm publishing token is stored. The repository URL must match GitHub exactly. No Docker images, documentation hosting, temporary CI transfer artifacts, or test-report uploads are part of this flow.
+Configure npm trusted publishing for **each** package with tellok/logline, release.yml, no environment, and direct npm publish. The runner uses Node.js 24 and npm 11.15.0. No persistent npm publishing token is stored. The repository URL must match GitHub exactly. After npm delivery, separate release jobs deploy the documentation site and publish the version-tagged server image for Linux amd64 and arm64. The server-image job needs registry package-write and release contents-write permissions. It verifies both platforms and attaches the OCI archive, deployment bundle and checksums. See the [operations guide](./server-operations.md) for installation.
 
 ## Beta and v1 installation
 
-Publishing always passes --tag beta. Before and after publication, latest must equal the greatest published stable v1 minor/patch version, not a fixed 1.0.0. The flow never writes latest; stable-v1 maintenance owns that channel. Install logline@beta for v2, logline@1 to constrain the major line, or logline for the latest stable v1.
+Publishing always passes --tag beta. For `logline`, before and after publication, `latest` must equal the greatest published stable v1 minor/patch version, not a fixed 1.0.0. The flow never writes latest; stable-v1 maintenance owns that channel. Install logline@beta for v2, logline@1 to constrain the major line, or logline for the latest stable v1. Install `logline-server-reporter@beta` for the matching self-hosted uploader.
 
 ## Concurrency and recovery
 
@@ -77,4 +77,4 @@ A single Pages artifact is required by the deploy-pages consumer. The job delete
 
 For local work, use pnpm docs:dev, pnpm docs:build, and pnpm docs:preview. README and Markdown guides remain the source of truth; generated staging and output are ignored and excluded from npm packaging.
 
-The private workspace root owns tooling; the publishable manifest and bilingual changelogs live in `packages/logline`. Version preparation targets that package without building it. Package verification stages public documentation from root sources before delivery. See the [workspace guide](./workspace.md).
+The private workspace root owns tooling; publishable manifests and bilingual changelogs live under `packages/logline` and `packages/logline-server-reporter`. Version preparation updates only release metadata. Each Changeset lists one target per line; Chinese summaries under `translations.json` appear in the targeted packages’ changelogs. A package advanced solely for lockstep receives a synchronization note. Package verification stages public documentation from root sources before delivery. See the [workspace guide](./workspace.md).

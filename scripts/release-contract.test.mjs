@@ -36,11 +36,12 @@ test('pending detection excludes README, hidden files, metadata, and consumed pr
   }
 });
 
-test('workspace version preparation versions only the public library without building it', () => {
+test('workspace preparation synchronizes both beta packages and bilingual chapters without building either product', () => {
   const folder = mkdtempSync(join(tmpdir(), 'logline-workspace-version-'));
   const writeJson = (path, value) => writeFileSync(join(folder, path), JSON.stringify(value));
   try {
-    for (const path of ['.changeset', '.release', 'packages/logline'])
+    const packages = ['logline', 'logline-server-reporter'];
+    for (const path of ['.changeset', '.release', ...packages.map((name) => `packages/${name}`)])
       mkdirSync(join(folder, path), { recursive: true });
     writeJson('package.json', {
       name: 'synthetic-workspace',
@@ -48,13 +49,14 @@ test('workspace version preparation versions only the public library without bui
       devDependencies: { '@changesets/cli': '2.29.7' },
     });
     writeFileSync(join(folder, 'pnpm-workspace.yaml'), "packages:\n  - 'packages/*'\n");
-    writeJson('packages/logline/package.json', {
-      name: 'logline',
-      version: '2.0.0-beta.0',
-      publishConfig: { tag: 'beta' },
-      scripts: { build: 'node -e "process.exit(99)"' },
-    });
-    writeJson('.changeset/config.json', { baseBranch: 'master', access: 'public' });
+    for (const name of packages)
+      writeJson(`packages/${name}/package.json`, {
+        name,
+        version: '2.0.0-beta.0',
+        publishConfig: { tag: 'beta' },
+        scripts: { build: 'node -e "process.exit(99)"' },
+      });
+    writeJson('.changeset/config.json', { baseBranch: 'master', access: 'public', fixed: [packages] });
     writeJson('.changeset/pre.json', {
       mode: 'pre',
       tag: 'beta',
@@ -63,13 +65,22 @@ test('workspace version preparation versions only the public library without bui
     });
     writeJson('.changeset/translations.json', { 'synthetic-update': 'Synthetic translated release summary.' });
     writeFileSync(join(folder, '.changeset/synthetic-update.md'), '---\nlogline: patch\n---\n\nSynthetic update.\n');
-    for (const name of ['CHANGELOG.md', 'CHANGELOG.zh-CN.md'])
-      writeFileSync(join(folder, 'packages/logline', name), '# Logline\n\n## 2.0.0-beta.0\n\nSynthetic baseline.\n');
+    for (const pkg of packages)
+      for (const name of ['CHANGELOG.md', 'CHANGELOG.zh-CN.md'])
+        writeFileSync(join(folder, 'packages', pkg, name), `# ${pkg}\n\n## 2.0.0-beta.0\n\nSynthetic baseline.\n`);
     const plan = prepareFiles(folder, 'synthetic-source');
     assert.equal(plan.package, 'logline');
     assert.equal(plan.version, '2.0.0-beta.1');
     assert.equal(JSON.parse(readFileSync(join(folder, 'package.json'), 'utf8')).version, undefined);
-    assert.equal(existsSync(join(folder, 'packages/logline/dist')), false);
+    assert.deepEqual(plan.packages, packages);
+    assert.deepEqual(plan.changesets[0].packages, ['logline']);
+    for (const name of packages) {
+      const path = join(folder, 'packages', name);
+      assert.equal(JSON.parse(readFileSync(join(path, 'package.json'))).version, plan.version);
+      for (const changelog of ['CHANGELOG.md', 'CHANGELOG.zh-CN.md'])
+        assert.ok(releaseChapter(readFileSync(join(path, changelog), 'utf8'), plan.version));
+      assert.equal(existsSync(join(path, 'dist')), false);
+    }
     assert.equal(existsSync(join(folder, 'CHANGELOG.md')), false);
   } finally {
     rmSync(folder, { recursive: true, force: true });

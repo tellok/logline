@@ -14,6 +14,7 @@ for (const path of [
   './vite-plugin',
   './plugin/indexeddb',
   './plugin/click-log',
+  './plugin/reporting',
 ]) {
   const pattern = path.startsWith('./plugin/') ? './plugin/*' : path;
   const entry = pkg.exports[pattern];
@@ -29,4 +30,17 @@ for (const path of [
 const runtime = await import(new URL('dist/index.js', root).href);
 assert.equal(runtime.LOGLINE_MODULE_ID, 'logline');
 assert.equal(typeof runtime.configureLogline, 'function');
+if (process.argv.includes('--reporter')) {
+  const uploader = new URL('../packages/logline-server-reporter/', import.meta.url);
+  const manifest = JSON.parse(readFileSync(new URL('package.json', uploader), 'utf8'));
+  const entry = manifest.exports['.'];
+  for (const file of Object.values(entry)) assert.ok(existsSync(new URL(file, uploader)), file);
+  for (const api of [
+    await import(new URL(entry.import, uploader)),
+    createRequire(new URL('package.json', uploader))(manifest.name),
+  ]) {
+    assert.equal(typeof api.createLoglineServerReporter, 'function');
+    assert.equal(typeof api.createLoglineServerTransport, 'function');
+  }
+}
 assert.equal(runtime.createLoglineAutoImport().resolvers[0]('LOG').from, 'logline');

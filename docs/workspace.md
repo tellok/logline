@@ -2,13 +2,15 @@
 
 English | [简体中文](./workspace.zh-CN.md)
 
-The repository uses pnpm workspaces and Nx. `packages/logline` is the publishable v2 beta library; the root package is private. `apps/*` is reserved for future applications, including [logline-server (#53)](https://github.com/tellok/logline/issues/53). The server is not implemented yet.
+The workspace has two public beta packages: `packages/logline` (logger and optional reporting scheduler) and `packages/logline-server-reporter` (HTTP uploader). `packages/logline-server` is the private PostgreSQL-backed service; see [self-hosting](./server-operations.md).
 
 ## Toolchain
 
 The development baseline is Node.js **24.22.1 LTS** and **pnpm 11.25.0**. `.node-version` supports version managers such as fnm and mise. `packageManager` pins pnpm, and `pmOnFail: download` selects it automatically. `engines.runtime` selects Node.js for pnpm scripts and `pnpm exec`; it does not replace the interactive shell's Node.js. Corepack can also select the pinned pnpm when installed and enabled separately.
 
 The root runtime selector uses pnpm’s `engines.runtime` field, which npm does not treat as a strict developer-version check. Engine checks are advisory, and pnpm selects its pinned tools using `download` rather than rejecting a version mismatch. The versions guide automatic selection without rejecting a different compatible host version. Keep `.node-version` and `engines.runtime` in sync when upgrading. CI reads `.node-version` and the root `packageManager` field.
+
+For `test` and `verify`, set `TEST_DATABASE_URL` to a disposable PostgreSQL 16 database accessible to the test process. The reporter integration uses the built packages and a live server.
 
 ```sh
 pnpm install --frozen-lockfile
@@ -20,10 +22,11 @@ pnpm run build
 pnpm run verify
 pnpm run docs:build
 pnpm run pack:logline
-node scripts/check-package.mjs
+pnpm run pack:reporter
+node scripts/check-package.mjs --reporter
 ```
 
-`verify` audits actual product test counts and release-contract tests, checks formatting, builds the library, stages public documentation, and verifies exports. Product tests run directly during this audit so a temporary report path is never lost to a cache hit. `pack:logline` runs `pnpm pack` inside the library and puts its tarball at the repository root. Its lifecycle type-checks and builds through Nx, then refreshes README, license, documentation, and consumer Skill copies from the root. Generated copies are ignored; edit their root sources.
+`verify` requires every core, server, uploader and release-contract test to run without skips. It checks formatting, builds both libraries and stages public documentation. It then packs and opens both real tarballs in a temporary consumer, verifies the uploader's published peer version, and exercises ESM, CommonJS and strict TypeScript imports. Product tests run directly during this audit so a temporary report path is never lost to a cache hit. `pack:logline` runs `pnpm pack` inside the library and puts its tarball at the repository root. Its lifecycle type-checks and builds through Nx, then refreshes README, license, documentation, and consumer Skill copies from the root. Generated copies are ignored; edit their root sources.
 
 ## Layout and task caching
 
@@ -50,4 +53,4 @@ pnpm run clean
 
 ## Releases
 
-Changesets operates from the root and versions `packages/logline/package.json` and the library's changelogs. The private root has no release version. Version PR preparation only updates release metadata; it never builds or publishes the library. Existing beta safeguards remain in the [release-flow contract](./release-flow.md).
+Changesets versions both public packages together; pnpm resolves the uploader’s workspace peer to the matching beta in its tarball. See the [release-flow contract](./release-flow.md) for the version and publication checks.

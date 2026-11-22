@@ -2,13 +2,13 @@
 
 [English](./release-flow.md) | 简体中文
 
-默认分支由 GitHub 元数据确定，当前为 master。此前默认分支的快照保留为 v1。单一发布包为 logline，Changesets CLI 固定为 2.29.7。首次发布为 2.0.0-beta.0，后续更新继续使用 beta 模式，正式 v2 发布另行决定。
+默认分支由 GitHub 元数据确定，当前为 master。此前默认分支的快照保留为 v1。Changesets CLI 固定为 2.29.7，公开 npm 包 `logline` 与 `logline-server-reporter` 作为固定组同步更新版本。私有 `logline-server` 以容器镜像交付，不发布到 npm。首次发布为 2.0.0-beta.0，后续更新继续使用 beta 模式，正式 v2 发布另行决定。
 
 ## 事件与版本决策
 
 1. 功能 PR 添加英文 Changeset 与 translations.json 中对应中文摘要，原生 PR 检查验收最新来源与目标的合并结果。
 2. 默认分支 push 在安装依赖前检测未消费变更集，排除 README、隐藏文件、元数据与已消费的预发布 ID。候选格式错误由固定 CLI 明确阻断。
-3. 有变更时，轻量工作流生成版本、双语 CHANGELOG、预发布消费记录与公开来源证明，创建或更新 codex/version-packages；不构建或上传产品。
+3. 有变更时，轻量工作流为两个包生成一致的 beta 版本、各自的双语更新日志、预发布消费记录以及标明两个包的版本计划，创建或更新 codex/version-packages；不构建或上传产品。
 4. 版本 PR 展示拟发布版本、基础源码 SHA、包、渠道与用户变更，不自动合并。首次发布按用户明确授权合并，后续由维护者决定。
 5. 仅合法版本 PR 的实际合并提交允许交付，普通提交、功能 PR、手工标签或任意手工运行均不能发布。
 
@@ -34,7 +34,7 @@
 
 独立的 CI matrix 使用打包后的产物，测试每个受支持 Vite 大版本（5、6、7、8）的最新稳定版本。每个消费者独立安装 Vite，检查严格公开类型、开发转换与依赖预构建、生产日志过滤、来源标注、base 注入、IndexedDB 自动初始化、HTML 启动捕获和 sourcemap。本地运行 `pnpm run build && pnpm run test:vite`，或追加 `-- 5` 选择单个大版本。仓库工具链保持 Vite 6，使 Vitest 与消费者的 Vite 版本独立运行。
 
-PR 验证产物仅留在作业本地，不用于正式交付。通过来源门禁后，发布作业检出精确合并提交，重新验证、构建一次，然后关闭打包脚本，封装已验收 dist。同一压缩包以 beta 标签发布 npm，同时作为持久 GitHub 预发布资产上传，并附摘要和来源清单；不重新构建或上传 CI 中转副本。
+PR 验证产物仅留在作业本地，不用于正式交付。通过来源门禁后，发布作业检出精确合并提交，重新验证、构建一次，然后关闭打包脚本，封装已验收 dist。两个压缩包均以 beta 标签发布 npm，同时作为持久 GitHub 预发布资产上传，并附摘要和来源清单；不重新构建或上传 CI 中转副本。
 
 Release 正文从双语 CHANGELOG 的本次精确版本章节生成。缺失或重复章节阻断，不混入旧版本或未发布变更。远端同名 npm 版本、标签及资产必须具有相同来源与摘要，否则失败，禁止覆盖。
 
@@ -42,11 +42,11 @@ Release 正文从双语 CHANGELOG 的本次精确版本章节生成。缺失或�
 
 检查作业只读仓库和 PR；版本准备具备内容、PR 与调度写权限；对应事件版本的目标重检控制器仅维护检查和临时引用；发布来源门禁只读；合格交付具备内容写权限及 OIDC；完成监听只精确清理已终结检查引用。
 
-npm 信任关系为 tellok/logline 的 release.yml，不限制 environment，允许直接 npm publish。使用 Node.js 24 与 npm 11.15.0，不保存长期 npm 发布令牌。产品、测试报告与打包文件只在作业本地消费；npm 包与 GitHub 正式资产独立持久保存。本流程不发布 Docker 镜像、不部署文档站，也没有临时传递制品。
+需分别为两个 npm 包配置信任关系：tellok/logline 的 release.yml，不限制 environment，允许直接 npm publish。使用 Node.js 24 与 npm 11.15.0，不保存长期 npm 发布令牌。产品、测试报告与打包文件只在作业本地消费；npm 包与 GitHub 正式资产独立持久保存。npm 交付后，独立作业部署文档站并发布带版本标签、支持 Linux amd64 和 arm64 的服务端镜像。镜像作业需要容器注册表包写权限和发布内容写权限；它验证两个平台，并附上 OCI 归档、部署包和校验和。安装方法参阅[运维指南](./server-operations.zh-CN.md)。
 
 ## Beta 与最新 v1
 
-发布显式指定 beta 标签，发布前后验证 latest 等于所有已发布稳定 v1 中最大的次版本和补丁版本，而不是固定的 1.0.0。本流程不会写入 latest。logline@beta 安装 v2，logline@1 限制在 v1 主版本，普通 logline 安装仍获得最新稳定 v1。
+发布显式指定 beta 标签，发布前后验证 `logline` 的 latest 等于所有已发布稳定 v1 中最大的次版本和补丁版本，而不是固定的 1.0.0。本流程不会写入 latest。logline@beta 安装 v2，logline@1 限制在 v1 主版本，普通 logline 安装仍获得最新稳定 v1。安装 `logline-server-reporter@beta` 可获取匹配的自托管上报包。
 
 ## 并发与恢复
 
@@ -70,4 +70,4 @@ Pages 部署需要一个供 deploy-pages 消费的临时制品。部署尝试结
 
 本地使用 pnpm docs:dev、pnpm docs:build 和 pnpm docs:preview。README 和 Markdown 指南是唯一内容来源；生成的暂存目录和站点产物均被忽略且不进入 npm 包。
 
-私有 workspace 根包负责工具链，可发布清单与双语更新日志位于 `packages/logline`。版本准备只更新该包元数据，不构建产品。交付前会从根目录源文件生成公开文档副本并验证包。详见 [Workspace 指南](./workspace.zh-CN.md)。
+私有 workspace 根包负责工具链，可发布清单与双语更新日志分别位于 `packages/logline` 与 `packages/logline-server-reporter`。版本准备只更新发布元数据，不构建产品。每个 Changeset 逐行列出目标包，对应的中文摘要在 `translations.json` 中维护，仅进入目标包的更新日志。如果一个包仅因版本同步而升级，其日志会标明原因。交付前会从根目录源文件生成公开文档副本并验证包。详见 [Workspace 指南](./workspace.zh-CN.md)。

@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logline-server
+spec:
+  replicas: 2
+  minReadySeconds: 5
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
+  selector:
+    matchLabels: { app: logline-server }
+  template:
+    metadata:
+      labels: { app: logline-server }
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: { app: logline-server }
+      containers:
+        - name: server
+          image: ghcr.io/tellok/logline-server:replace-with-release-tag
+          ports:
+            - { name: http, containerPort: 4318 }
+          envFrom:
+            - secretRef: { name: logline-server-secrets }
+            - configMapRef: { name: logline-server-settings }
+          resources:
+            requests: { cpu: 250m, memory: 128Mi }
+            limits: { cpu: '1', memory: 384Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          startupProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 2
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: { path: /ready, port: http }
+            periodSeconds: 3
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 15
+            timeoutSeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: logline-server
+spec:
+  selector: { app: logline-server }
+  ports:
+    - { name: http, port: 4318, targetPort: http }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: logline-server
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app: logline-server }

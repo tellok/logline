@@ -4,7 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   api,
-  assertBeta,
+  PUBLIC_PACKAGES,
+  pairedVersion,
   command,
   output,
   prepareFiles,
@@ -41,8 +42,9 @@ const plan = readJson('.release/version-plan.json');
 assert.equal(plan.baseSha, parents[0], 'Version plan is stale relative to its actual merge base');
 assert.equal(plan.channel, 'beta');
 assert.equal(plan.cli, '2.29.7');
-assertBeta(readJson('packages/logline/package.json'));
-assert.equal(readJson('packages/logline/package.json').version, plan.version);
+assert.equal(plan.schema, 2);
+assert.deepEqual(plan.packages, PUBLIC_PACKAGES);
+assert.equal(pairedVersion(), plan.version);
 const changed = command('git', ['diff', '--name-only', plan.baseSha, pr.head.sha]).trim().split('\n');
 assert.ok(
   changed.every((path) => VERSION_FILES.includes(path)),

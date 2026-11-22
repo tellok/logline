@@ -40,6 +40,23 @@ configureLogline({
 });
 ```
 
+## Upload to your own server
+
+Install `logline-server-reporter@beta` alongside the matching `logline@beta` release. The reporter is optional: importing Logline alone sends nothing. Configure one reporter per destination using a project DSN. This example runs in a trusted application process:
+
+```ts
+import { configureLogline } from 'logline';
+import { createLoglineServerReporter } from 'logline-server-reporter';
+
+const reporter = createLoglineServerReporter({
+  dsn: process.env.LOGLINE_DSN!,
+  reporting: { sampleRate: 0.1, levelSampleRates: { ERROR: 1 } },
+});
+configureLogline({ plugins: [reporter] });
+```
+
+Create a project ingestion key in the admin API, then construct `https://<key>@<host>[/prefix]/<project-uuid>`. The DSN can only submit events to that project; it belongs to the project, not a member. A browser DSN is public: anyone who copies it can submit events. Use a separate key for your backend, and generate trusted audit events there. Browser uploads that send an Origin require `LOGLINE_INGEST_ORIGINS` on the server. There is no implicit hosted endpoint, durable client queue, or upload of IndexedDB history. See the [reporting contract](./docs/reporting.md), [ingestion API](./docs/server-ingestion.md), [administration](./docs/server-admin.md), [Logs Explorer](./docs/server-explorer.md), [MCP tools](./docs/server-mcp.md), and [deployment and performance guide](./docs/server-operations.md).
+
 ## Vite integration
 
 ```ts
@@ -112,7 +129,7 @@ Declare the experimental Logline version in both `peerDependencies` and `devDepe
 
 ## Development and releases
 
-The pnpm workspace keeps the publishable library in `packages/logline` and reserves `apps/*` for future applications. Nx caches builds and checks. See the bilingual [workspace guide](./docs/workspace.md) for toolchain selection, commands, caching, and packaging.
+The pnpm workspace contains the core `logline` library, the public `logline-server-reporter` uploader, and the self-hosted `logline-server`. Nx caches builds and checks. See the bilingual [workspace guide](./docs/workspace.md) for toolchain selection, commands, caching, and packaging.
 
 ```sh
 pnpm install
