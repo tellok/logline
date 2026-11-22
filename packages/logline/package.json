@@ -1,6 +1,6 @@
 {
   "name": "logline",
-  "version": "2.0.0-beta.0",
+  "version": "2.0.0-beta.1",
   "description": "Structured frontend logging with Vite integration, IndexedDB persistence, and startup error capture.",
   "type": "module",
   "main": "./dist/index.cjs",
