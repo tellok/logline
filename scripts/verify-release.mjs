@@ -4,16 +4,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   api,
-  PUBLIC_PACKAGES,
-  pairedVersion,
   command,
   output,
   prepareFiles,
   project,
   readJson,
+  OWNERSHIP_MARKER,
+  PUBLIC_PACKAGES,
   VERSION_BRANCH,
   VERSION_FILES,
-  VERSION_MARKER,
 } from './release-contract.mjs';
 
 const { repository, defaultBranch } = project();
@@ -27,7 +26,7 @@ const candidates = associated.filter(
     pr.head.ref === VERSION_BRANCH &&
     pr.head.repo?.full_name === repository &&
     pr.labels.some((label) => label.name === 'release:version') &&
-    pr.body?.includes(VERSION_MARKER),
+    pr.body?.includes(OWNERSHIP_MARKER),
 );
 if (!candidates.length) {
   output('eligible', false);
@@ -42,9 +41,12 @@ const plan = readJson('.release/version-plan.json');
 assert.equal(plan.baseSha, parents[0], 'Version plan is stale relative to its actual merge base');
 assert.equal(plan.channel, 'beta');
 assert.equal(plan.cli, '2.29.7');
-assert.equal(plan.schema, 2);
-assert.deepEqual(plan.packages, PUBLIC_PACKAGES);
-assert.equal(pairedVersion(), plan.version);
+assert.equal(plan.schema, 3);
+assert.deepEqual(
+  plan.packages.map((item) => item.name),
+  PUBLIC_PACKAGES,
+  'Version plan packages differ from the public deliverable set',
+);
 const changed = command('git', ['diff', '--name-only', plan.baseSha, pr.head.sha]).trim().split('\n');
 assert.ok(
   changed.every((path) => VERSION_FILES.includes(path)),
@@ -69,4 +71,3 @@ command('git', ['fetch', 'origin', defaultBranch]);
 command('git', ['merge-base', '--is-ancestor', sha, `origin/${defaultBranch}`]);
 output('eligible', true);
 output('source_sha', sha);
-output('version', plan.version);

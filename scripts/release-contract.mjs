@@ -7,8 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 
-export const VERSION_BRANCH = 'codex/version-packages';
-export const VERSION_MARKER = '<!-- logline-version-pr -->';
+export const VERSION_BRANCH = 'release/version-update';
+export const OWNERSHIP_MARKER = '<!-- logline:version-pr -->';
 export const PUBLIC_PACKAGES = ['logline', 'logline-server-reporter'];
 export const VERSION_FILES = [
   ...PUBLIC_PACKAGES.flatMap((name) =>
@@ -68,18 +68,17 @@ export const assertBeta = (pkg) => {
   assert.equal(pkg.publishConfig?.tag, 'beta');
 };
 
-/** Validate both npm deliverables and return their single beta version. The server ships as an image only. */
-export const pairedVersion = (cwd = root) => {
-  const versions = PUBLIC_PACKAGES.map((name) => {
-    const pkg = readJson(`packages/${name}/package.json`, cwd);
-    assertBeta(pkg);
-    assert.equal(pkg.name, name);
-    assert.ok(!pkg.private, `${name} must be publishable`);
-    return pkg.version;
-  });
-  assert.equal(new Set(versions).size, 1, 'Public npm packages must have matching beta versions');
-  return versions[0];
+/** Read one public npm package's beta version, independent of its companions. */
+export const packageVersion = (name, cwd = root) => {
+  const pkg = readJson(`packages/${name}/package.json`, cwd);
+  assertBeta(pkg);
+  assert.equal(pkg.name, name);
+  assert.ok(!pkg.private, `${name} must be publishable`);
+  return pkg.version;
 };
+
+/** Per-package immutable tag: the scope-preserving npm identity plus its version. */
+export const packageTag = (name, version) => `${name}@${version}`;
 
 /** Resolve the newest published stable v1 version, including its latest patch/minor. */
 export const newestV1 = (versions) => {
@@ -108,9 +107,15 @@ export const output = (name, value) => {
   else process.stdout.write(`${name}=${value}\n`);
 };
 
-/** Consume Changesets without building a product and record deterministic public provenance. */
+/** Insert a chapter after the first H1 heading without duplicating maintained content. */
+const insertChapter = (text, chapter) => text.replace(/(^# [^\n]+\n)/, (heading) => `${heading}\n${chapter}`);
+
+/**
+ * Consume Changesets without building a product and record deterministic public provenance.
+ * Packages keep independent versions; only packages whose version advanced get a chapter.
+ */
 export const prepareFiles = (cwd, baseSha) => {
-  const previousVersion = pairedVersion(cwd);
+  const previous = Object.fromEntries(PUBLIC_PACKAGES.map((name) => [name, packageVersion(name, cwd)]));
   const pre = readJson('.changeset/pre.json', cwd);
   assert.equal(pre.mode, 'pre');
   assert.equal(pre.tag, 'beta');
@@ -142,27 +147,33 @@ export const prepareFiles = (cwd, baseSha) => {
   });
   assert.ok(changesets.length, 'No unconsumed Changesets');
   command(process.execPath, [resolve(root, 'node_modules/@changesets/cli/bin.js'), 'version'], cwd);
-  const version = pairedVersion(cwd);
-  assert.notEqual(version, previousVersion, 'A nonempty release must advance the beta');
-  for (const name of PUBLIC_PACKAGES) {
-    const summaries = changesets.filter((item) => item.packages.includes(name)).map((item) => item.translation);
-    const path = resolve(cwd, `packages/${name}/CHANGELOG.zh-CN.md`);
-    const chinese = readFileSync(path, 'utf8');
-    const chapter = `## ${version}\n\n${(summaries.length ? summaries : ['与配套 npm 包同步升级 beta 版本。']).map((summary) => `- ${summary}`).join('\n')}\n\n`;
+  const packages = PUBLIC_PACKAGES.map((name) => ({
+    name,
+    path: `packages/${name}`,
+    previousVersion: previous[name],
+    version: packageVersion(name, cwd),
+    deliver: 'npm',
+  }));
+  const changed = packages.filter((item) => item.version !== item.previousVersion);
+  assert.ok(changed.length, 'A nonempty release must advance at least one package');
+  for (const item of changed) {
+    const summaries = changesets
+      .filter((entry) => entry.packages.includes(item.name))
+      .map((entry) => entry.translation);
+    const chapter = `## ${item.version}\n\n${(summaries.length ? summaries : ['与配套 npm 包同步升级 beta 版本。'])
+      .map((summary) => `- ${summary}`)
+      .join('\n')}\n\n`;
     writeFileSync(
-      path,
-      chinese.replace(/(^# [^\n]+\n)/, (heading) => `${heading}\n${chapter}`),
+      resolve(cwd, `packages/${item.name}/CHANGELOG.zh-CN.md`),
+      insertChapter(readFileSync(resolve(cwd, `packages/${item.name}/CHANGELOG.zh-CN.md`), 'utf8'), chapter),
     );
-    // The pinned CLI may omit a chapter for a fixed package with no direct changes.
-    const englishPath = resolve(cwd, `packages/${name}/CHANGELOG.md`);
+    // The pinned CLI may omit a chapter for a package advanced only by internal dependency propagation.
+    const englishPath = resolve(cwd, `packages/${item.name}/CHANGELOG.md`);
     const english = readFileSync(englishPath, 'utf8');
-    if (!summaries.length && !english.split(/\r?\n/).includes(`## ${version}`))
+    if (!summaries.length && !english.split(/\r?\n/).includes(`## ${item.version}`))
       writeFileSync(
         englishPath,
-        english.replace(
-          /(^# [^\n]+\n)/,
-          (heading) => `${heading}\n## ${version}\n\n- Align the beta version with its companion npm package.\n\n`,
-        ),
+        insertChapter(english, `## ${item.version}\n\n- Align the beta version with its companion npm package.\n\n`),
       );
   }
   command(
@@ -175,20 +186,17 @@ export const prepareFiles = (cwd, baseSha) => {
     cwd,
   );
   const plan = {
-    schema: 2,
+    schema: 3,
     baseSha,
     channel: 'beta',
     cli: '2.29.7',
-    package: PUBLIC_PACKAGES[0],
-    packages: PUBLIC_PACKAGES,
-    previousVersion,
-    version,
+    packages,
     changesets,
   };
   writeFileSync(resolve(cwd, '.release/version-plan.json'), `${JSON.stringify(plan, undefined, 2)}\n`);
-  for (const name of PUBLIC_PACKAGES)
+  for (const item of changed)
     for (const file of ['CHANGELOG.md', 'CHANGELOG.zh-CN.md'])
-      releaseChapter(readFileSync(resolve(cwd, `packages/${name}/${file}`), 'utf8'), version);
+      releaseChapter(readFileSync(resolve(cwd, `packages/${item.name}/${file}`), 'utf8'), item.version);
   return plan;
 };
 

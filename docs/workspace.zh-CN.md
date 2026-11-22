@@ -53,4 +53,4 @@ pnpm run clean
 
 ## 发布
 
-Changesets 同步更新两个公开包；打包时 pnpm 将上传包的 workspace peer 替换为对应的 beta 版本。版本与发布检查请参阅[发布契约](./release-flow.zh-CN.md)。
+Changesets 独立维护两个公开包的版本：变更集只声明它影响的包，上传包的 `workspace:*` peer 依赖会在核心包变化时按 patch 级联升级。打包时 pnpm 将上传包的 workspace peer 替换为交付的 beta 范围。版本与发布检查请参阅[发布契约](./release-flow.zh-CN.md)。

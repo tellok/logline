@@ -2,23 +2,29 @@
 
 [English](./release-flow.md) | 简体中文
 
-默认分支由 GitHub 元数据确定，当前为 master。此前默认分支的快照保留为 v1。Changesets CLI 固定为 2.29.7，公开 npm 包 `logline` 与 `logline-server-reporter` 作为固定组同步更新版本。私有 `logline-server` 以容器镜像交付，不发布到 npm。首次发布为 2.0.0-beta.0，后续更新继续使用 beta 模式，正式 v2 发布另行决定。
+默认分支由 GitHub 元数据确定，当前为 master。此前默认分支的快照保留为 v1。Changesets CLI 固定为 2.29.7，公开 npm 包 `logline` 与 `logline-server-reporter` **独立维护版本**：变更集只声明它影响的包，内部依赖传播会按 patch 升级受影响的包。私有 `logline-server` 维护自己的 `package.json` 版本，以容器镜像交付，不发布到 npm。首次发布为 2.0.0-beta.0，后续更新继续使用 beta 模式，正式 v2 发布另行决定。
 
 ## 事件与版本决策
 
 1. 功能 PR 添加英文 Changeset 与 translations.json 中对应中文摘要，原生 PR 检查验收最新来源与目标的合并结果。
 2. 默认分支 push 在安装依赖前检测未消费变更集，排除 README、隐藏文件、元数据与已消费的预发布 ID。候选格式错误由固定 CLI 明确阻断。
-3. 有变更时，轻量工作流为两个包生成一致的 beta 版本、各自的双语更新日志、预发布消费记录以及标明两个包的版本计划，创建或更新 codex/version-packages；不构建或上传产品。
-4. 版本 PR 展示拟发布版本、基础源码 SHA、包、渠道与用户变更，不自动合并。首次发布按用户明确授权合并，后续由维护者决定。
+3. 有变更时，轻量工作流运行固定 CLI，为每个实际升级的包生成双语更新日志章节、预发布消费记录以及逐包版本计划，创建或更新 `release/version-update` 分支及其受管理版本 PR；不构建或上传产品。
+4. 版本 PR 展示拟发布版本、基础源码 SHA、各包、渠道与用户变更，不自动合并。首次发布按用户明确授权合并，后续由维护者决定。
 5. 仅合法版本 PR 的实际合并提交允许交付，普通提交、功能 PR、手工标签或任意手工运行均不能发布。
 
-版本 PR 必须使用 merge commit。当前契约拒绝 squash/rebase 合并。实际父提交必须与计划基础提交及版本 PR 来源一致；发布门禁核验仓库、实际默认分支、受管理分支、标记与标签、仅版本文件范围、版本、beta 渠道及变更集摘要，并在隔离检出中重放版本准备，逐字节比较所有版本文件后才允许产品构建。
+版本 PR 必须使用 merge commit。当前契约拒绝 squash/rebase 合并。实际父提交必须与计划基础提交及版本 PR 来源一致；发布门禁核验仓库、实际默认分支、受管理分支、标记与标签、仅版本文件范围、各包版本、beta 渠道及变更集摘要，并在隔离检出中重放版本准备，逐字节比较所有版本文件后才允许产品构建。
 
 预发布变更集保留在目录中，消费 ID 由 pre.json 记录。检测排除已消费 ID，因此不会因历史记录重复创建空版本 PR。
 
+## 版本 PR 写入身份
+
+版本准备复用 `tellok/actions` 的 `changesets-version-pr` 组件，固定到默认分支提交 `9df224593aad286a012adc6760fa7de7cb175e22`。组件检测未消费变更集，调用项目的 `scripts/version-maintain.mjs` 作为版本命令，并在固定分支 `release/version-update` 上创建或更新一个受管理 PR。
+
+版本分支推送与 PR 创建使用 `secrets.VERSION_PR_TOKEN` 中的专用细粒度 PAT，绝不使用作业 `GITHUB_TOKEN`。预期 PR 作者为 PAT 用户，从 `vars.VERSION_PR_AUTHOR` 读取并作为组件的 `managed-author` 传入。Git 提交作者与提交者仍为自动化身份；PR 作者是已认证的 PAT 用户。`actions/checkout` 使用 `persist-credentials: false`，版本命令在组件清理后的环境中运行，不接触发布秘密。
+
 ## 最新合并结果与信任边界
 
-来源更新使用原生 pull_request 事件。目标分支 push 分页查找所有受影响开放 PR，包含非默认目标。仓库内协作者与授权自动化使用指向最新原生合并提交的不可变临时引用，确保检查配置、脚本、安装、测试和构建来自同一合并树；不修改来源或目标引用。检查前后核验来源、目标与父提交，陈旧结果明确失败，按 PR 隔离并发并取消旧检查。
+来源更新使用原生 pull_request 事件。目标分支 push 分页查找所有受影响开放 PR，包含非默认目标。仓库内协作者与授权自动化使用指向最新原生合并提交的不可变临时引用（`ci/merged/pr-…`），确保检查配置、脚本、安装、测试和构建来自同一合并树；不修改来源或目标引用。检查前后核验来源、目标与父提交，陈旧结果明确失败，按 PR 隔离并发并取消旧检查。
 
 每个工作流检出自身事件对应的提交，通过标准 `setup-node` 的 `node-version-file` 参数读取该检出中的 `.node-version`。重检控制器的脚本与配置均来自 push 或手工选择的提交，不替换为默认分支代码。完成监听使用 `workflow_run` 事件对应的提交；GitHub 将该事件的版本定义在默认分支上。
 
@@ -34,15 +40,15 @@
 
 独立的 CI matrix 使用打包后的产物，测试每个受支持 Vite 大版本（5、6、7、8）的最新稳定版本。每个消费者独立安装 Vite，检查严格公开类型、开发转换与依赖预构建、生产日志过滤、来源标注、base 注入、IndexedDB 自动初始化、HTML 启动捕获和 sourcemap。本地运行 `pnpm run build && pnpm run test:vite`，或追加 `-- 5` 选择单个大版本。仓库工具链保持 Vite 6，使 Vitest 与消费者的 Vite 版本独立运行。
 
-PR 验证产物仅留在作业本地，不用于正式交付。通过来源门禁后，发布作业检出精确合并提交，重新验证、构建一次，然后关闭打包脚本，封装已验收 dist。两个压缩包均以 beta 标签发布 npm，同时作为持久 GitHub 预发布资产上传，并附摘要和来源清单；不重新构建或上传 CI 中转副本。
+PR 验证产物仅留在作业本地，不用于正式交付。通过来源门禁后，发布作业检出精确合并提交，重新验证、构建一次，然后关闭打包脚本，为每个实际升级的包封装已验收 dist。每个包的精确压缩包以 beta 标签发布 npm，随后通过可复用 `github-release` 组件，基于该包自身的更新日志章节创建不可变 Git 标签与 GitHub 预发布；不重新构建或上传 CI 中转副本。
 
-Release 正文从双语 CHANGELOG 的本次精确版本章节生成。缺失或重复章节阻断，不混入旧版本或未发布变更。远端同名 npm 版本、标签及资产必须具有相同来源与摘要，否则失败，禁止覆盖。
+Release 正文从各包自身 CHANGELOG 的本次精确版本章节生成。缺失或重复章节阻断，不混入旧版本或未发布变更。远端同名 npm 版本、标签及资产必须具有相同来源与摘要，否则失败，禁止覆盖。
 
 ## 权限与存储
 
-检查作业只读仓库和 PR；版本准备具备内容、PR 与调度写权限；对应事件版本的目标重检控制器仅维护检查和临时引用；发布来源门禁只读；合格交付具备内容写权限及 OIDC；完成监听只精确清理已终结检查引用。
+检查作业只读仓库和 PR；版本准备通过 PAT 获得内容与 PR 写权限，检测只读；对应事件版本的目标重检控制器仅维护检查和临时引用；发布来源门禁只读；合格交付具备内容写权限及 OIDC；完成监听只精确清理已终结检查引用。
 
-需分别为两个 npm 包配置信任关系：tellok/logline 的 release.yml，不限制 environment，允许直接 npm publish。使用 Node.js 24 与 npm 11.15.0，不保存长期 npm 发布令牌。产品、测试报告与打包文件只在作业本地消费；npm 包与 GitHub 正式资产独立持久保存。npm 交付后，独立作业部署文档站并发布带版本标签、支持 Linux amd64 和 arm64 的服务端镜像。镜像作业需要容器注册表包写权限和发布内容写权限；它验证两个平台，并附上 OCI 归档、部署包和校验和。安装方法参阅[运维指南](./server-operations.zh-CN.md)。
+需分别为两个 npm 包配置信任关系：tellok/logline 的 release.yml，不限制 environment，允许直接 npm publish。使用 Node.js 24 与 npm 11.15.0。发布优先使用 trusted publishing（OIDC）；仅当某包尚未配置 trusted publisher 时（例如全新包的首发），才回退使用 `secrets.NPM_TOKEN` 中的可选 granular classic token。trusted publishing 配好后 token 不再被使用，因此首发后即可删除该 token，而无需按 90 天周期轮换。产品、测试报告与打包文件只在作业本地消费；npm 包与 GitHub 正式资产独立持久保存。npm 交付后，独立作业部署文档站并发布带版本标签、支持 Linux amd64 和 arm64 的服务端镜像。镜像使用私有 `logline-server` 包自身版本打标签，发布到该包自己的 GitHub 预发布，附上 OCI 归档、部署包和校验和。镜像作业需要容器注册表包写权限和发布内容写权限。安装方法参阅[运维指南](./server-operations.zh-CN.md)。
 
 ## Beta 与最新 v1
 
@@ -50,15 +56,15 @@ Release 正文从双语 CHANGELOG 的本次精确版本章节生成。缺失或�
 
 ## 并发与恢复
 
-版本准备串行并取消旧运行，准备前后核验默认分支是否前进，以精确租约更新受管理分支。PR 管理区域重写但保留外部人工说明，未知写入结果通过回读确认。
+版本准备串行并取消旧运行。可复用组件在准备前后核验默认来源与受管理分支，以精确租约更新受管理分支。PR 管理区域重写但保留外部人工说明，未知写入结果通过回读确认。
 
-发布串行但不取消。手工恢复必须指定合法版本 PR 的精确合并 SHA，并重做来源与质量检查。npm 已发布而 GitHub 资产失败时，重跑原来源核验 npm 摘要后只补齐缺失的匹配资产。执行器丢失后从原始合格源码重建本地文件。GitHub 预发布不设置为 latest。
+发布串行但不取消，各包独立交付：未变化的包不重新打标签、不重新发布、不重新上传。手工恢复必须指定合法版本 PR 的精确合并 SHA，并重做来源与质量检查。npm 已发布而 GitHub 资产失败时，重跑原来源核验 npm 摘要后只补齐缺失的匹配资产。执行器丢失后从原始合格源码重建本地文件。GitHub 预发布不设置为 latest。
 
 ## 验收证据
 
-本地契约测试覆盖 beta 限制、最新 v1 选择、精确章节及变更集检测。真实上线将验证功能 PR、自动版本 PR、最新合并结果、来源重放、OIDC 发布与默认安装保护，并记录实际结果。不将尚未执行的 fork 审批及取消故障场景表述为已通过。
+本地契约测试覆盖 beta 限制、最新 v1 选择、精确章节、变更集检测及逐包独立版本。真实上线将验证功能 PR、自动版本 PR、最新合并结果、来源重放、OIDC 发布与默认安装保护，并记录实际结果。不将尚未执行的 fork 审批及取消故障场景表述为已通过。
 
-依据：[版本 PR 发布 Skill](https://github.com/tellok/dotai/tree/main/skills/design-pr-versionization)、[Changesets 预发布](https://changesets.dev/guide/prereleases)、[npm 可信发布](https://docs.npmjs.com/trusted-publishers/)。
+依据：[版本 PR 发布 Skill](https://github.com/tellok/dotai/tree/main/skills/design-pr-versionization)、[Changesets 预发布](https://changesets.dev/guide/prereleases)、[npm 可信发布](https://docs.npmjs.com/trusted-publishers/)。可复用组件固定到 `tellok/actions` 默认分支提交 `9df224593aad286a012adc6760fa7de7cb175e22`。
 
 ## 在线文档
 
@@ -70,4 +76,4 @@ Pages 部署需要一个供 deploy-pages 消费的临时制品。部署尝试结
 
 本地使用 pnpm docs:dev、pnpm docs:build 和 pnpm docs:preview。README 和 Markdown 指南是唯一内容来源；生成的暂存目录和站点产物均被忽略且不进入 npm 包。
 
-私有 workspace 根包负责工具链，可发布清单与双语更新日志分别位于 `packages/logline` 与 `packages/logline-server-reporter`。版本准备只更新发布元数据，不构建产品。每个 Changeset 逐行列出目标包，对应的中文摘要在 `translations.json` 中维护，仅进入目标包的更新日志。如果一个包仅因版本同步而升级，其日志会标明原因。交付前会从根目录源文件生成公开文档副本并验证包。详见 [Workspace 指南](./workspace.zh-CN.md)。
+私有 workspace 根包负责工具链，可发布清单与双语更新日志分别位于 `packages/logline` 与 `packages/logline-server-reporter`。版本准备只更新发布元数据，不构建产品。每个 Changeset 逐行列出目标包，对应的中文摘要在 `translations.json` 中维护，仅进入目标包的更新日志。如果一个包仅因依赖同步而升级，其日志会标明原因。交付前会从根目录源文件生成公开文档副本并验证包。详见 [Workspace 指南](./workspace.zh-CN.md)。

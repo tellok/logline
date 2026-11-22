@@ -36,7 +36,7 @@ test('pending detection excludes README, hidden files, metadata, and consumed pr
   }
 });
 
-test('workspace preparation synchronizes both beta packages and bilingual chapters without building either product', () => {
+test('workspace preparation versions only the changeset-named package and writes bilingual chapters without building', () => {
   const folder = mkdtempSync(join(tmpdir(), 'logline-workspace-version-'));
   const writeJson = (path, value) => writeFileSync(join(folder, path), JSON.stringify(value));
   try {
@@ -56,7 +56,14 @@ test('workspace preparation synchronizes both beta packages and bilingual chapte
         publishConfig: { tag: 'beta' },
         scripts: { build: 'node -e "process.exit(99)"' },
       });
-    writeJson('.changeset/config.json', { baseBranch: 'master', access: 'public', fixed: [packages] });
+    writeJson('.changeset/config.json', {
+      baseBranch: 'master',
+      access: 'public',
+      fixed: [],
+      linked: [],
+      updateInternalDependencies: 'patch',
+      ignore: [],
+    });
     writeJson('.changeset/pre.json', {
       mode: 'pre',
       tag: 'beta',
@@ -69,18 +76,33 @@ test('workspace preparation synchronizes both beta packages and bilingual chapte
       for (const name of ['CHANGELOG.md', 'CHANGELOG.zh-CN.md'])
         writeFileSync(join(folder, 'packages', pkg, name), `# ${pkg}\n\n## 2.0.0-beta.0\n\nSynthetic baseline.\n`);
     const plan = prepareFiles(folder, 'synthetic-source');
-    assert.equal(plan.package, 'logline');
-    assert.equal(plan.version, '2.0.0-beta.1');
-    assert.equal(JSON.parse(readFileSync(join(folder, 'package.json'), 'utf8')).version, undefined);
-    assert.deepEqual(plan.packages, packages);
+    assert.equal(plan.schema, 3);
+    assert.equal(plan.channel, 'beta');
     assert.deepEqual(plan.changesets[0].packages, ['logline']);
+    assert.deepEqual(
+      plan.packages.map((item) => item.name),
+      packages,
+    );
+    assert.ok(plan.packages.every((item) => item.deliver === 'npm' && item.path === `packages/${item.name}`));
+    const byName = Object.fromEntries(plan.packages.map((item) => [item.name, item]));
+    assert.equal(byName.logline.previousVersion, '2.0.0-beta.0');
+    assert.equal(byName.logline.version, '2.0.0-beta.1');
+    assert.equal(byName['logline-server-reporter'].previousVersion, '2.0.0-beta.0');
+    assert.equal(byName['logline-server-reporter'].version, '2.0.0-beta.0');
+    assert.equal(JSON.parse(readFileSync(join(folder, 'package.json'), 'utf8')).version, undefined);
     for (const name of packages) {
       const path = join(folder, 'packages', name);
-      assert.equal(JSON.parse(readFileSync(join(path, 'package.json'))).version, plan.version);
-      for (const changelog of ['CHANGELOG.md', 'CHANGELOG.zh-CN.md'])
-        assert.ok(releaseChapter(readFileSync(join(path, changelog), 'utf8'), plan.version));
+      assert.equal(JSON.parse(readFileSync(join(path, 'package.json'))).version, byName[name].version);
       assert.equal(existsSync(join(path, 'dist')), false);
     }
+    for (const changelog of ['CHANGELOG.md', 'CHANGELOG.zh-CN.md'])
+      assert.ok(releaseChapter(readFileSync(join(folder, 'packages/logline', changelog), 'utf8'), '2.0.0-beta.1'));
+    assert.throws(() =>
+      releaseChapter(
+        readFileSync(join(folder, 'packages/logline-server-reporter', 'CHANGELOG.md'), 'utf8'),
+        '2.0.0-beta.1',
+      ),
+    );
     assert.equal(existsSync(join(folder, 'CHANGELOG.md')), false);
   } finally {
     rmSync(folder, { recursive: true, force: true });

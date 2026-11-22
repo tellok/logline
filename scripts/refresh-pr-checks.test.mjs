@@ -29,7 +29,7 @@ const runController = (branch, requests) => {
       [`${prefix}/git/ref/heads/integration`]: { object: { sha: target } },
       [`${prefix}/git/commits/${merge}`]: { parents: [{ sha: target }, { sha: source }], sha: merge },
       [`${prefix}/actions/workflows/ci.yml/runs?per_page=100`]: { workflow_runs: [] },
-      [`${prefix}/git/matching-refs/heads/codex/ci/pr-7-${source.slice(0, 12)}-${target.slice(0, 12)}`]: [],
+      [`${prefix}/git/matching-refs/heads/ci/merged/pr-7-${source.slice(0, 12)}-${target.slice(0, 12)}`]: [],
       [`${prefix}/git/refs`]: {},
     };
     const calls = join(folder, 'calls.jsonl');
@@ -77,5 +77,5 @@ test('a target push dispatches the current merged result for affected PRs', () =
   assert.equal(dispatched.length, 1);
   assert.ok(dispatched[0].includes(`source_sha=${source}`));
   assert.ok(dispatched[0].includes(`target_sha=${target}`));
-  assert.ok(dispatched[0].includes(`codex/ci/pr-7-${source.slice(0, 12)}-${target.slice(0, 12)}`));
+  assert.ok(dispatched[0].includes(`ci/merged/pr-7-${source.slice(0, 12)}-${target.slice(0, 12)}`));
 });

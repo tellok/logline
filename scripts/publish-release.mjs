@@ -1,43 +1,88 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import {
-  api,
   assertBeta,
   command,
   newestV1,
-  pairedVersion,
+  output,
+  packageTag,
   project,
   readJson,
   releaseChapter,
   root,
 } from './release-contract.mjs';
 
-const pkg = readJson('packages/logline/package.json');
-assert.equal(pkg.version, pairedVersion());
+const plan = readJson('.release/version-plan.json');
+assert.equal(plan.schema, 3);
+assert.equal(plan.channel, 'beta');
 const sourceSha = command('git', ['rev-parse', 'HEAD']).trim();
 assert.equal(process.env.RELEASE_VERIFIED_SHA, sourceSha, 'Release source was not verified');
 assert.equal(process.env.GITHUB_ACTIONS, 'true', 'Publish using the trusted GitHub release workflow');
-const { repository } = project();
+project(); // Resolve the repository identity before the first authenticated write.
 const folder = mkdtempSync(join(tmpdir(), 'logline-delivery-'));
 const registry = '--registry=https://registry.npmjs.org/';
+const KEYS = { logline: 'core', 'logline-server-reporter': 'reporter' };
 
-/** Preserve latest on the newest stable v1 subversion before and after beta delivery. */
+/** Preserve latest on the newest stable v1 subversion for the established `logline` package. */
 const assertLatest = () => {
-  const published = JSON.parse(command('npm', ['view', pkg.name, 'versions', '--json', registry]));
-  const tags = JSON.parse(command('npm', ['view', pkg.name, 'dist-tags', '--json', registry]));
+  const published = JSON.parse(command('npm', ['view', 'logline', 'versions', '--json', registry]));
+  const tags = JSON.parse(command('npm', ['view', 'logline', 'dist-tags', '--json', registry]));
   assert.equal(tags.latest, newestV1(published), 'latest must select the newest published stable v1');
   return tags;
 };
 assertLatest();
-// pnpm pack resolves workspace:* peers to the exact version of the delivered core.
-// Package verified outputs without lifecycle hooks; recovery must reproduce the same bytes.
+
+/**
+ * Publish one tarball. Prefer trusted publishing (OIDC); when that is not configured, fall back
+ * to an optional granular classic token in `NPM_TOKEN`. `--provenance` still records SLSA
+ * attestations in both cases, because provenance uses the workflow's `id-token`, not the npm token.
+ */
+function publishTarball(tarball, manifest) {
+  const args = [
+    'publish',
+    tarball,
+    '--ignore-scripts',
+    '--tag',
+    'beta',
+    '--access',
+    'public',
+    '--provenance',
+    registry,
+  ];
+  const run = (env) => spawnSync('npm', args, { cwd: root, encoding: 'utf8', env });
+  const fail = (result) => {
+    process.stderr.write(result.stderr || '');
+    throw new Error(`npm publish failed for ${manifest.name}@${manifest.version}`);
+  };
+
+  const classicToken = process.env.NPM_TOKEN;
+  if (!classicToken) {
+    const result = run({ ...process.env });
+    if (result.status !== 0) fail(result);
+    return;
+  }
+
+  // Try OIDC first so an expired 90-day token never masks a working trusted publisher.
+  const oidcEnv = { ...process.env };
+  delete oidcEnv.NODE_AUTH_TOKEN;
+  const oidc = run(oidcEnv);
+  if (oidc.status === 0) return;
+  const authFailure =
+    /E401|E403|ENEEDAUTH|401 Unauthorized|403 Forbidden|auth required|requires you to be logged in|unable to authenticate/i.test(
+      oidc.stderr || '',
+    );
+  if (!authFailure) fail(oidc);
+  const classic = run({ ...process.env, NODE_AUTH_TOKEN: classicToken });
+  if (classic.status !== 0) fail(classic);
+}
+
+/** Pack and publish one package's tarball; recovery must reproduce identical bytes. */
 function deliver(manifest) {
   assertBeta(manifest);
-  assert.equal(manifest.version, pkg.version, 'Public beta packages must have matching versions');
   const tarball = join(folder, `${manifest.name}-${manifest.version}.tgz`);
   command('pnpm', ['--config.ignore-scripts=true', 'pack', '--out', tarball], join(root, 'packages', manifest.name));
   const bytes = readFileSync(tarball);
@@ -54,17 +99,7 @@ function deliver(manifest) {
     assert.equal(JSON.parse(remote.stdout), integrity, 'An existing npm version has different content');
   else {
     assert.match(remote.stderr, /E404/, 'Registry failure is not proof that a version is unpublished');
-    command('npm', [
-      'publish',
-      tarball,
-      '--ignore-scripts',
-      '--tag',
-      'beta',
-      '--access',
-      'public',
-      '--provenance',
-      registry,
-    ]);
+    publishTarball(tarball, manifest);
   }
   assert.equal(
     JSON.parse(command('npm', ['view', `${manifest.name}@${manifest.version}`, 'dist.integrity', '--json', registry])),
@@ -76,76 +111,73 @@ function deliver(manifest) {
   );
   return { tarball, integrity, sha256: createHash('sha256').update(bytes).digest('hex') };
 }
-const { tarball, integrity, sha256 } = deliver(pkg);
-const reporter = deliver(readJson('packages/logline-server-reporter/package.json'));
-assert.equal(assertLatest().beta, pkg.version, 'beta dist-tag does not identify the delivered version');
-const manifest = {
-  package: pkg.name,
-  version: pkg.version,
-  sourceSha,
-  channel: 'beta',
-  integrity,
-  sha256,
-  reporter: {
-    package: 'logline-server-reporter',
-    version: pkg.version,
-    integrity: reporter.integrity,
-    sha256: reporter.sha256,
-  },
-};
-const manifestFile = join(folder, 'release-manifest.json');
-writeFileSync(manifestFile, `${JSON.stringify(manifest, undefined, 2)}\n`);
-const notesFile = join(folder, 'release-notes.md');
-writeFileSync(
-  notesFile,
-  ['logline', 'logline-server-reporter']
-    .map((name) => {
-      const chapter = (suffix) =>
-        releaseChapter(readFileSync(join(root, `packages/${name}/CHANGELOG${suffix}.md`), 'utf8'), pkg.version);
-      return `## ${name}\n\n${chapter('')}\n\n### Simplified Chinese\n\n${chapter('.zh-CN')}\n`;
-    })
-    .join('\n'),
-);
-const tag = `v${pkg.version}`;
-const refs = api(`repos/${repository}/git/matching-refs/tags/${tag}`);
-const existingTag = refs.find((ref) => ref.ref === `refs/tags/${tag}`);
-if (existingTag) assert.equal(existingTag.object.sha, sourceSha, 'Release tag already points to another source');
-const releases = api(`repos/${repository}/releases?per_page=100`, { paginate: true });
-const existing = releases.find((release) => release.tag_name === tag);
-if (!existing)
-  command('gh', [
-    'release',
-    'create',
-    tag,
-    '--repo',
-    repository,
-    '--target',
-    sourceSha,
-    '--prerelease',
-    '--latest=false',
-    '--title',
-    `${pkg.name} ${pkg.version}`,
-    '--notes-file',
-    notesFile,
-    tarball,
-    reporter.tarball,
+
+const delivered = [];
+for (const item of plan.packages.filter((pkg) => pkg.version !== pkg.previousVersion)) {
+  assert.equal(item.deliver, 'npm');
+  const manifest = readJson(`packages/${item.name}/package.json`);
+  const result = deliver(manifest);
+
+  // Per-package release notes come only from that package's exact changelog chapter.
+  const notes = [
+    `## ${item.name}`,
+    '',
+    releaseChapter(readFileSync(join(root, `packages/${item.name}/CHANGELOG.md`), 'utf8'), item.version),
+    '',
+    '### Simplified Chinese',
+    '',
+    releaseChapter(readFileSync(join(root, `packages/${item.name}/CHANGELOG.zh-CN.md`), 'utf8'), item.version),
+    '',
+  ].join('\n');
+  const notesFile = join(folder, `${item.name}-notes.md`);
+  writeFileSync(notesFile, notes);
+
+  const manifestFile = join(folder, `${item.name}-manifest.json`);
+  writeFileSync(
     manifestFile,
-  ]);
-else {
-  assert.ok(existing.prerelease && !existing.draft);
-  for (const file of [tarball, reporter.tarball, manifestFile]) {
-    assert.ok(existsSync(file));
-    const name = file.split('/').at(-1);
-    const asset = existing.assets.find((entry) => entry.name === name);
-    if (asset)
-      assert.equal(
-        asset.digest,
-        `sha256:${createHash('sha256').update(readFileSync(file)).digest('hex')}`,
-        'Existing release asset content differs',
-      );
-    else command('gh', ['release', 'upload', tag, file, '--repo', repository]);
-  }
+    `${JSON.stringify(
+      {
+        package: item.name,
+        version: item.version,
+        sourceSha,
+        channel: 'beta',
+        integrity: result.integrity,
+        sha256: result.sha256,
+      },
+      undefined,
+      2,
+    )}\n`,
+  );
+
+  // The github-release component creates the immutable tag and uploads/verifies these assets.
+  const assetsFile = join(folder, `${item.name}-assets.json`);
+  writeFileSync(
+    assetsFile,
+    `${JSON.stringify(
+      [
+        { name: `${item.name}-${item.version}.tgz`, path: result.tarball, hash: `sha256:${result.sha256}` },
+        {
+          name: `${item.name}-manifest.json`,
+          path: manifestFile,
+          hash: `sha256:${createHash('sha256').update(readFileSync(manifestFile)).digest('hex')}`,
+        },
+      ],
+      undefined,
+      2,
+    )}\n`,
+  );
+
+  const key = KEYS[item.name];
+  assert.ok(key, `Unexpected package ${item.name}`);
+  output(`${key}_tag`, packageTag(item.name, item.version));
+  output(`${key}_name`, `${item.name} ${item.version}`);
+  output(`${key}_notes`, notesFile);
+  output(`${key}_assets`, assetsFile);
+  delivered.push(item.name);
 }
-process.stdout.write(
-  `Published ${pkg.name} and logline-server-reporter at ${pkg.version} with beta; logline latest remains on the newest v1.\n`,
-);
+assert.ok(delivered.length, 'No package advanced in this version plan');
+if (delivered.includes('logline')) {
+  const loglineVersion = plan.packages.find((pkg) => pkg.name === 'logline').version;
+  assert.equal(assertLatest().beta, loglineVersion, 'beta dist-tag does not identify the delivered logline version');
+}
+process.stdout.write(`Published ${delivered.join(', ')} at beta; logline latest remains on the newest v1.\n`);

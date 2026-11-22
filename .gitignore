@@ -11,6 +11,9 @@ coverage/
 .vitepress/cache/
 .vitepress/dist/
 
+# Generated version-PR body read back by the versioning component; never committed
+.release/version-pr-body.md
+
 # Nx task cache and generated package documentation
 .nx/
 packages/logline/README*.md

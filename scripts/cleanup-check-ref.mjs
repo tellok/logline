@@ -8,7 +8,7 @@ assert.ok(Number.isSafeInteger(id) && id > 0);
 const run = api(`repos/${repository}/actions/runs/${id}`);
 assert.equal(run.status, 'completed');
 assert.equal(run.repository.full_name, repository);
-if (!/^codex\/ci\/pr-\d+-[a-f0-9]{12}-[a-f0-9]{12}$/.test(run.head_branch || '')) process.exit(0);
+if (!/^ci\/merged\/pr-\d+-[a-f0-9]{12}-[a-f0-9]{12}$/.test(run.head_branch || '')) process.exit(0);
 const consumers = api(
   `repos/${repository}/actions/workflows/ci.yml/runs?branch=${encodeURIComponent(run.head_branch)}&per_page=100`,
 ).workflow_runs;

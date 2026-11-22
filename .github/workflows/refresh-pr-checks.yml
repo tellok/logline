@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - '**'
-      - '!codex/ci/**'
+      - '!ci/merged/**'
   workflow_dispatch:
     inputs:
       pr_number:

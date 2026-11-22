@@ -36,6 +36,7 @@ jobs:
         run: node scripts/verify-release.mjs
         env:
           GH_TOKEN: ${{ github.token }}
+
   publish:
     services:
       postgres:
@@ -68,10 +69,35 @@ jobs:
       - run: pnpm run verify
         env:
           TEST_DATABASE_URL: postgres://postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/postgres
-      - run: pnpm run release:beta
+      - id: publish
+        run: pnpm run release:beta
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERIFIED_SHA: ${{ needs.eligibility.outputs.source_sha }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - uses: tellok/actions/github-actions/github-release@9df224593aad286a012adc6760fa7de7cb175e22
+        if: steps.publish.outputs.core_tag != ''
+        with:
+          source: ${{ needs.eligibility.outputs.source_sha }}
+          tag: ${{ steps.publish.outputs.core_tag }}
+          name: ${{ steps.publish.outputs.core_name }}
+          notes-file: ${{ steps.publish.outputs.core_notes }}
+          assets-file: ${{ steps.publish.outputs.core_assets }}
+          prerelease: 'true'
+          latest: 'false'
+          github-token: ${{ github.token }}
+      - uses: tellok/actions/github-actions/github-release@9df224593aad286a012adc6760fa7de7cb175e22
+        if: steps.publish.outputs.reporter_tag != ''
+        with:
+          source: ${{ needs.eligibility.outputs.source_sha }}
+          tag: ${{ steps.publish.outputs.reporter_tag }}
+          name: ${{ steps.publish.outputs.reporter_name }}
+          notes-file: ${{ steps.publish.outputs.reporter_notes }}
+          assets-file: ${{ steps.publish.outputs.reporter_assets }}
+          prerelease: 'true'
+          latest: 'false'
+          github-token: ${{ github.token }}
+
   server-image:
     needs: [eligibility, publish]
     if: needs.eligibility.outputs.eligible == 'true'
@@ -87,11 +113,18 @@ jobs:
         with:
           ref: ${{ needs.eligibility.outputs.source_sha }}
           persist-credentials: false
-      - name: Resolve exact published release
+      - name: Resolve the server's own prerelease tag
         id: release
         run: |
-          tag=v$(node -p "require('./packages/logline/package.json').version")
-          test "$(gh release view "$tag" --json tagName --jq .tagName)" = "$tag"
+          tag="$(node -p "require('./packages/logline-server/package.json').version")"
+          if ! gh release view "$tag" --json tagName --jq .tagName >/dev/null 2>&1; then
+            gh release create "$tag" \
+              --target "$(git rev-parse HEAD)" \
+              --prerelease \
+              --latest=false \
+              --title "logline-server $tag" \
+              --notes "Self-hosted Logline server image (linux/amd64 and linux/arm64)."
+          fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
@@ -121,6 +154,9 @@ jobs:
         if: steps.existing.outputs.digest == ''
         id: image
         uses: docker/build-push-action@v6
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: 'false'
+          DOCKER_BUILD_SUMMARY: 'false'
         with:
           context: .
           file: packages/logline-server/Dockerfile
@@ -134,6 +170,7 @@ jobs:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
           IMAGE_DIGEST: ${{ steps.existing.outputs.digest || steps.image.outputs.digest }}
         run: bash deploy/package-release-image.sh
+
   documentation:
     needs: [eligibility, publish]
     if: needs.eligibility.outputs.eligible == 'true'

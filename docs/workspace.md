@@ -53,4 +53,4 @@ pnpm run clean
 
 ## Releases
 
-Changesets versions both public packages together; pnpm resolves the uploader’s workspace peer to the matching beta in its tarball. See the [release-flow contract](./release-flow.md) for the version and publication checks.
+Changesets versions the two public packages independently: a Changeset names only the packages it changes, and the uploader's `workspace:*` peer dependency propagates a patch bump when its core changes. At pack time pnpm resolves the uploader's workspace peer to the delivered beta range. See the [release-flow contract](./release-flow.md) for the version and publication checks.
