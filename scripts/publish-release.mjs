@@ -4,6 +4,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { setTimeout } from 'node:timers/promises';
 import {
   assertBeta,
   command,
@@ -38,7 +39,7 @@ assertLatest();
 
 /**
  * Publish one tarball. Prefer trusted publishing (OIDC); when that is not configured, fall back
- * to an optional granular classic token in `NPM_TOKEN`. `--provenance` still records SLSA
+ * to an optional granular access token in `NPM_TOKEN`. `--provenance` still records SLSA
  * attestations in both cases, because provenance uses the workflow's `id-token`, not the npm token.
  */
 function publishTarball(tarball, manifest) {
@@ -59,52 +60,52 @@ function publishTarball(tarball, manifest) {
     throw new Error(`npm publish failed for ${manifest.name}@${manifest.version}`);
   };
 
-  const classicToken = process.env.NPM_TOKEN;
-  if (!classicToken) {
-    const result = run({ ...process.env });
-    if (result.status !== 0) fail(result);
-    return;
-  }
-
   // Try OIDC first so an expired 90-day token never masks a working trusted publisher.
+  const token = process.env.NPM_TOKEN;
   const oidcEnv = { ...process.env };
   delete oidcEnv.NODE_AUTH_TOKEN;
+  delete oidcEnv.NPM_TOKEN;
   const oidc = run(oidcEnv);
-  if (oidc.status === 0) return;
+  if (oidc.status === 0) {
+    process.stdout.write(`Published ${manifest.name} using npm Trusted Publishing.\n`);
+    return;
+  }
   const authFailure =
     /E401|E403|ENEEDAUTH|401 Unauthorized|403 Forbidden|auth required|requires you to be logged in|unable to authenticate/i.test(
       oidc.stderr || '',
     );
-  if (!authFailure) fail(oidc);
-  const classic = run({ ...process.env, NODE_AUTH_TOKEN: classicToken });
-  if (classic.status !== 0) fail(classic);
+  if (!token || !authFailure) fail(oidc);
+  process.stdout.write(`Retrying ${manifest.name} with the configured npm access token.\n`);
+  const fallback = run({ ...oidcEnv, NODE_AUTH_TOKEN: token });
+  if (fallback.status !== 0) fail(fallback);
 }
 
 /** Pack and publish one package's tarball; recovery must reproduce identical bytes. */
-function deliver(manifest) {
+async function deliver(manifest) {
   assertBeta(manifest);
   const tarball = join(folder, `${manifest.name}-${manifest.version}.tgz`);
   command('pnpm', ['--config.ignore-scripts=true', 'pack', '--out', tarball], join(root, 'packages', manifest.name));
   const bytes = readFileSync(tarball);
   const integrity = `sha512-${createHash('sha512').update(bytes).digest('base64')}`;
-  const remote = spawnSync(
-    'npm',
-    ['view', `${manifest.name}@${manifest.version}`, 'dist.integrity', '--json', registry],
-    {
+  const readIntegrity = () =>
+    spawnSync('npm', ['view', `${manifest.name}@${manifest.version}`, 'dist.integrity', '--json', registry], {
       cwd: root,
       encoding: 'utf8',
-    },
-  );
-  if (remote.status === 0)
-    assert.equal(JSON.parse(remote.stdout), integrity, 'An existing npm version has different content');
-  else {
+    });
+  let remote = readIntegrity();
+  if (remote.status !== 0) {
     assert.match(remote.stderr, /E404/, 'Registry failure is not proof that a version is unpublished');
     publishTarball(tarball, manifest);
+    const deadline = Date.now() + 10 * 60 * 1000;
+    remote = readIntegrity();
+    while (remote.status !== 0 && /E404/.test(remote.stderr) && Date.now() < deadline) {
+      process.stdout.write(`Waiting for ${manifest.name}@${manifest.version} to appear in the npm registry.\n`);
+      await setTimeout(10000);
+      remote = readIntegrity();
+    }
   }
-  assert.equal(
-    JSON.parse(command('npm', ['view', `${manifest.name}@${manifest.version}`, 'dist.integrity', '--json', registry])),
-    integrity,
-  );
+  assert.equal(remote.status, 0, `Could not verify npm publication: ${remote.stderr}`);
+  assert.equal(JSON.parse(remote.stdout), integrity, 'The published npm version has different content');
   assert.equal(
     JSON.parse(command('npm', ['view', manifest.name, 'dist-tags', '--json', registry])).beta,
     manifest.version,
@@ -116,7 +117,7 @@ const delivered = [];
 for (const item of plan.packages.filter((pkg) => pkg.version !== pkg.previousVersion)) {
   assert.equal(item.deliver, 'npm');
   const manifest = readJson(`packages/${item.name}/package.json`);
-  const result = deliver(manifest);
+  const result = await deliver(manifest);
 
   // Per-package release notes come only from that package's exact changelog chapter.
   const notes = [

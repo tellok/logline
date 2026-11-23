@@ -3,7 +3,15 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { assertBeta, newestV1, pendingChangesets, prepareFiles, releaseChapter } from './release-contract.mjs';
+import {
+  assertBeta,
+  command,
+  newestV1,
+  pendingChangesets,
+  prepareFiles,
+  releaseChapter,
+  root,
+} from './release-contract.mjs';
 
 test('beta contract rejects latest, stable versions, and alpha versions', () => {
   assert.doesNotThrow(() => assertBeta({ version: '2.0.0-beta.0', publishConfig: { tag: 'beta' } }));
@@ -76,6 +84,11 @@ test('workspace preparation versions only the changeset-named package and writes
       for (const name of ['CHANGELOG.md', 'CHANGELOG.zh-CN.md'])
         writeFileSync(join(folder, 'packages', pkg, name), `# ${pkg}\n\n## 2.0.0-beta.0\n\nSynthetic baseline.\n`);
     const plan = prepareFiles(folder, 'synthetic-source');
+    command(
+      process.execPath,
+      [join(root, 'node_modules/prettier/bin/prettier.cjs'), '--check', '.release/version-plan.json'],
+      folder,
+    );
     assert.equal(plan.schema, 3);
     assert.equal(plan.channel, 'beta');
     assert.deepEqual(plan.changesets[0].packages, ['logline']);

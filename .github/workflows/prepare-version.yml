@@ -26,6 +26,7 @@ jobs:
       - if: steps.pending.outputs.found == 'true'
         run: corepack enable && pnpm install --frozen-lockfile
       - if: steps.pending.outputs.found == 'true'
+        id: version
         uses: tellok/actions/github-actions/changesets-version-pr@9df224593aad286a012adc6760fa7de7cb175e22
         with:
           operation: maintain
@@ -47,3 +48,9 @@ jobs:
           title: 'release: version update'
           commit-message: 'chore(release): version update'
           body-file: .release/version-pr-body.md
+      - name: Label the confirmed version PR
+        if: steps.version.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ secrets.VERSION_PR_TOKEN }}
+          VERSION_PR: ${{ steps.version.outputs.pull-request-number }}
+        run: gh api "repos/$GITHUB_REPOSITORY/issues/$VERSION_PR/labels" -f 'labels[]=release:version' --silent

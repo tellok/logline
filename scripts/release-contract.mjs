@@ -176,15 +176,6 @@ export const prepareFiles = (cwd, baseSha) => {
         insertChapter(english, `## ${item.version}\n\n- Align the beta version with its companion npm package.\n\n`),
       );
   }
-  command(
-    process.execPath,
-    [
-      resolve(root, 'node_modules/prettier/bin/prettier.cjs'),
-      '--write',
-      ...VERSION_FILES.filter((file) => file !== '.release/version-plan.json' && existsSync(resolve(cwd, file))),
-    ],
-    cwd,
-  );
   const plan = {
     schema: 3,
     baseSha,
@@ -194,6 +185,15 @@ export const prepareFiles = (cwd, baseSha) => {
     changesets,
   };
   writeFileSync(resolve(cwd, '.release/version-plan.json'), `${JSON.stringify(plan, undefined, 2)}\n`);
+  command(
+    process.execPath,
+    [
+      resolve(root, 'node_modules/prettier/bin/prettier.cjs'),
+      '--write',
+      ...VERSION_FILES.filter((file) => existsSync(resolve(cwd, file))),
+    ],
+    cwd,
+  );
   for (const item of changed)
     for (const file of ['CHANGELOG.md', 'CHANGELOG.zh-CN.md'])
       releaseChapter(readFileSync(resolve(cwd, `packages/${item.name}/${file}`), 'utf8'), item.version);
