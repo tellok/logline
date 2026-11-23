@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { devNull, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { setTimeout } from 'node:timers/promises';
@@ -65,15 +65,16 @@ function publishTarball(tarball, manifest) {
   const oidcEnv = { ...process.env };
   delete oidcEnv.NODE_AUTH_TOKEN;
   delete oidcEnv.NPM_TOKEN;
-  const oidc = run(oidcEnv);
+  const oidc = run({ ...oidcEnv, NPM_CONFIG_USERCONFIG: devNull });
   if (oidc.status === 0) {
     process.stdout.write(`Published ${manifest.name} using npm Trusted Publishing.\n`);
     return;
   }
+  const diagnostic = oidc.stderr || '';
   const authFailure =
     /E401|E403|ENEEDAUTH|401 Unauthorized|403 Forbidden|auth required|requires you to be logged in|unable to authenticate/i.test(
-      oidc.stderr || '',
-    );
+      diagnostic,
+    ) || diagnostic.includes(`404 Not Found - PUT https://registry.npmjs.org/${manifest.name} -`);
   if (!token || !authFailure) fail(oidc);
   process.stdout.write(`Retrying ${manifest.name} with the configured npm access token.\n`);
   const fallback = run({ ...oidcEnv, NODE_AUTH_TOKEN: token });
