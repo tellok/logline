@@ -18,7 +18,7 @@
 
 ## 版本 PR 写入身份
 
-版本准备复用 `tellok/actions` 的 `changesets-version-pr` 组件，固定到默认分支提交 `9df224593aad286a012adc6760fa7de7cb175e22`。组件检测未消费变更集，调用项目的 `scripts/version-maintain.mjs` 作为版本命令，并在固定分支 `release/version-update` 上创建或更新一个受管理 PR。
+版本准备复用 `tellok/actions` 的 `changesets-version-pr` 组件，固定到默认分支提交 `9df224593aad286a012adc6760fa7de7cb175e22`。组件检测未消费变更集，调用项目的 `scripts/version-maintain.mjs` 作为版本命令，并在固定分支 `release/version-update` 上创建或更新一个受管理 PR。 组件确认 PR 后，工作流添加必需的 `release:version` 标签。
 
 版本分支推送与 PR 创建使用 `secrets.VERSION_PR_TOKEN` 中的专用细粒度 PAT，绝不使用作业 `GITHUB_TOKEN`。预期 PR 作者为 PAT 用户，从 `vars.VERSION_PR_AUTHOR` 读取并作为组件的 `managed-author` 传入。Git 提交作者与提交者仍为自动化身份；PR 作者是已认证的 PAT 用户。`actions/checkout` 使用 `persist-credentials: false`，版本命令在组件清理后的环境中运行，不接触发布秘密。
 
@@ -48,7 +48,7 @@ Release 正文从各包自身 CHANGELOG 的本次精确版本章节生成。缺�
 
 检查作业只读仓库和 PR；版本准备通过 PAT 获得内容与 PR 写权限，检测只读；对应事件版本的目标重检控制器仅维护检查和临时引用；发布来源门禁只读；合格交付具备内容写权限及 OIDC；完成监听只精确清理已终结检查引用。
 
-需分别为两个 npm 包配置信任关系：tellok/logline 的 release.yml，不限制 environment，允许直接 npm publish。使用 Node.js 24 与 npm 11.15.0。发布优先使用 trusted publishing（OIDC）；仅当某包尚未配置 trusted publisher 时（例如全新包的首发），才回退使用 `secrets.NPM_TOKEN` 中的可选 granular classic token。trusted publishing 配好后 token 不再被使用，因此首发后即可删除该 token，而无需按 90 天周期轮换。产品、测试报告与打包文件只在作业本地消费；npm 包与 GitHub 正式资产独立持久保存。npm 交付后，独立作业部署文档站并发布带版本标签、支持 Linux amd64 和 arm64 的服务端镜像。镜像使用私有 `logline-server` 包自身版本打标签，发布到该包自己的 GitHub 预发布，附上 OCI 归档、部署包和校验和。镜像作业需要容器注册表包写权限和发布内容写权限。安装方法参阅[运维指南](./server-operations.zh-CN.md)。
+需分别为两个 npm 包配置信任关系：tellok/logline 的 release.yml，不限制 environment，允许直接 npm publish。使用 Node.js 24 与 npm 11.15.0。发布优先使用 trusted publishing（OIDC）；认证失败时（例如全新包的首发），可使用 `secrets.NPM_TOKEN` 中的可选细粒度访问令牌重试。两个包都通过可信发布验证后，即可删除该备用令牌。产品、测试报告与打包文件只在作业本地消费；npm 包与 GitHub 正式资产独立持久保存。npm 交付后，独立作业部署文档站并发布带版本标签、支持 Linux amd64 和 arm64 的服务端镜像。镜像使用私有 `logline-server` 包自身版本打标签，发布到该包自己的 GitHub 预发布，附上 OCI 归档、部署包和校验和。镜像作业需要容器注册表包写权限和发布内容写权限。安装方法参阅[运维指南](./server-operations.zh-CN.md)。
 
 ## Beta 与最新 v1
 
@@ -58,7 +58,7 @@ Release 正文从各包自身 CHANGELOG 的本次精确版本章节生成。缺�
 
 版本准备串行并取消旧运行。可复用组件在准备前后核验默认来源与受管理分支，以精确租约更新受管理分支。PR 管理区域重写但保留外部人工说明，未知写入结果通过回读确认。
 
-发布串行但不取消，各包独立交付：未变化的包不重新打标签、不重新发布、不重新上传。手工恢复必须指定合法版本 PR 的精确合并 SHA，并重做来源与质量检查。npm 已发布而 GitHub 资产失败时，重跑原来源核验 npm 摘要后只补齐缺失的匹配资产。执行器丢失后从原始合格源码重建本地文件。GitHub 预发布不设置为 latest。
+发布串行但不取消，各包独立交付：未变化的包不重新打标签、不重新发布、不重新上传。手工恢复必须指定合法版本 PR 的精确合并 SHA，并重做来源与质量检查。npm 接受上传后，发布流程最多等待十分钟，直到注册表可查询该版本，并验证其完整性。npm 已发布而 GitHub 资产失败时，重跑原来源核验 npm 摘要后只补齐缺失的匹配资产。执行器丢失后从原始合格源码重建本地文件。GitHub 预发布不设置为 latest。
 
 ## 验收证据
 
