@@ -35,14 +35,14 @@ const createConsoleWriter = (method: ConsoleMethod): ConsoleWriter => {
 };
 
 const writers: Record<LogLevelName, ConsoleWriter> = {
-  TRACE: createConsoleWriter('debug'),
-  DEBUG: createConsoleWriter('debug'),
-  LOG: createConsoleWriter('log'),
-  WARN: createConsoleWriter('warn'),
-  ERROR: createConsoleWriter('error'),
+  TRACE: /* @__PURE__ */ createConsoleWriter('debug'),
+  DEBUG: /* @__PURE__ */ createConsoleWriter('debug'),
+  LOG: /* @__PURE__ */ createConsoleWriter('log'),
+  WARN: /* @__PURE__ */ createConsoleWriter('warn'),
+  ERROR: /* @__PURE__ */ createConsoleWriter('error'),
 };
 
-const isTest = isTestEnv();
+const isTest = /* @__PURE__ */ isTestEnv();
 
 /**
  * Format console-style placeholders while retaining unused arguments for later output.
@@ -314,11 +314,11 @@ export const createLoggerByLevel = (level: LogLevelName): LoggerFunction => {
 };
 
 /** Lowest-level logger for fine-grained tracing. */
-export const TRACE = createLogger('TRACE');
-export const DEBUG = createLogger('DEBUG');
-export const LOG = createLogger('LOG');
-export const WARN = createLogger('WARN');
-export const ERROR = createLogger('ERROR');
+export const TRACE = /* @__PURE__ */ createLogger('TRACE');
+export const DEBUG = /* @__PURE__ */ createLogger('DEBUG');
+export const LOG = /* @__PURE__ */ createLogger('LOG');
+export const WARN = /* @__PURE__ */ createLogger('WARN');
+export const ERROR = /* @__PURE__ */ createLogger('ERROR');
 
 /**
  * List log functions eligible for pure-call removal below a threshold.

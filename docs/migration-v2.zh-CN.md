@@ -15,6 +15,7 @@ v2 重写了 Logline 的公开 API。请将 v1 的构造函数和存储协议调
 - 从 `logline` 引入 `TRACE`、`DEBUG`、`LOG`、`WARN` 和 `ERROR`。
 - 使用 `configureLogline` 配置日志，通过 `getLoglineConfig` 和 `resetLoglineConfig` 读取或重置配置。
 - 使用 `logline/vite-plugin` 导出的 `loglineVitePlugin` 注入源码位置前缀并按构建等级过滤日志。
+- CI 构建可设置 `VITE_LOGLINE_ENABLE=false`，移除所有可识别的 Logline 调用，包括 `ERROR`。本地构建设置 `VITE_LOG_LEVEL=TRACE` 可保留所有等级。参见 [Vite 集成](../README.zh-CN.md#本地构建保留日志ci-构建剔除日志)。
 - 使用 `logline/auto-import` 导出的 `createLoglineAutoImport` 按需接入自动导入。
 - 使用 `logline/plugin/indexeddb` 导出的 `createIndexedDBLoggingPlugin` 配置持久化。历史数据库不会自动导入。
 

@@ -15,6 +15,7 @@ v2 is a rewrite of the public Logline API. Replace v1 constructor and storage-pr
 - Import `TRACE`, `DEBUG`, `LOG`, `WARN`, and `ERROR` from `logline`.
 - Configure logging with `configureLogline`; read or reset configuration with `getLoglineConfig` and `resetLoglineConfig`.
 - Use `loglineVitePlugin` from `logline/vite-plugin` for source prefixes and build-level filtering.
+- For a CI build that strips all recognized Logline calls, including `ERROR`, set `VITE_LOGLINE_ENABLE=false`. Use `VITE_LOG_LEVEL=TRACE` to retain every level in a local build. See [Vite integration](../README.md#keep-logs-locally-and-strip-them-in-ci).
 - Use `createLoglineAutoImport` from `logline/auto-import` for optional auto-import integration.
 - Configure persistence with `createIndexedDBLoggingPlugin` from `logline/plugin/indexeddb`. Existing databases are not imported automatically.
 
