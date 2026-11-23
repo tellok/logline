@@ -208,7 +208,8 @@ IndexedDB 插件初始化完成后不会代理或订阅普通 `console.debug/log
 
 | 参数名                               | 类型                                 | 默认值      | 用途                                                              |
 | :----------------------------------- | :----------------------------------- | :---------- | :---------------------------------------------------------------- |
-| `level`                              | `string`                             | `undefined` | 构建时保留的最低日志等级，低于此等级的调用将被剔除                |
+| `level`                              | `string`                             | `undefined` | 构建时保留的最低日志等级                                          |
+| `enable`                             | `boolean`                            | `true`      | 设为 `false` 时在构建中剔除所有等级的日志调用                     |
 | `indexedDB`                          | `boolean \| IndexedDBLoggingOptions` | `false`     | 最终应用是否自动创建 IndexedDB 插件；传入对象可配置数据库         |
 | `logPrefixMacro`                     | `boolean \| object`                  | `true`      | 编译期自动注入文件路径、行列号和函数名，并标记 npm 依赖的实际包名 |
 | `logPrefixMacro.includeFunctionName` | `boolean`                            | `true`      | 是否包含函数名                                                    |
@@ -218,8 +219,7 @@ IndexedDB 插件初始化完成后不会代理或订阅普通 `console.debug/log
 
 ### 构建时剔除低等级日志 (`level`)
 
-通过设置 `level`，构建阶段会将低于该等级的日志调用标记为 pure，从而在打包时被移除（Tree Shaking）。
-例如设为 `WARN`，则 `TRACE`/`DEBUG`/`LOG` 会被视为可清理的冗余调用，仅保留 `WARN` 和 `ERROR`。
+构建阶段会移除低于 `level` 的日志调用。例如设为 `WARN`，会移除 `TRACE`、`DEBUG` 和 `LOG`，保留 `WARN` 和 `ERROR`。
 
 日志等级来源优先级如下：
 
@@ -229,6 +229,19 @@ IndexedDB 插件初始化完成后不会代理或订阅普通 `console.debug/log
 4. 默认值 `LOG`
 
 执行 `vite build` 时，插件会通过 Vite logger 打印最终采用的日志等级和来源。
+
+#### 本地构建保留日志，CI 构建剔除日志
+
+使用 `loglineVitePlugin()`，在 CI 设置 `VITE_LOGLINE_ENABLE=false`。启用日志时，用 `VITE_LOG_LEVEL` 选择构建保留的最低等级。
+
+```sh
+VITE_LOG_LEVEL=TRACE pnpm exec vite build  # 本地保留所有等级的 Logline 日志
+VITE_LOGLINE_ENABLE=false pnpm exec vite build  # CI 剔除 Logline 日志调用
+```
+
+插件依次读取显式配置的 `enable`、进程环境变量 `VITE_LOGLINE_ENABLE` 和 Vite 的 `.env*` 文件。环境变量接受 `true` 和 `false`，不区分大小写，默认开启。也可以在 `.env.ci` 中设置 `VITE_LOGLINE_ENABLE=false`，执行 `pnpm exec vite build --mode ci`，或直接配置 `loglineVitePlugin({ enable: false })`。
+
+关闭日志会移除应用代码和打包依赖中可静态识别的 `TRACE`、`DEBUG`、`LOG`、`WARN` 和 `ERROR` 调用，调用的参数也不会求值。请将业务副作用放在日志参数之外。此设置适用于 `vite build`，动态日志调用、原生 `console.*` 调用和单独启用的日志集成由各自的配置控制。
 
 ### 自动注入调用位置信息 (`logPrefixMacro`)
 

@@ -81,6 +81,8 @@ export default defineConfig({
 
 Resolve the build level from explicit options, process VITE_LOG_LEVEL, merged Vite environment files, then LOG. Lower-level calls are removable during production builds. Prefix injection defaults to true. Application code uses source locations; npm dependencies use the nearest installed package.json and published artifact location. Existing npm prefixes are normalized rather than stacked. Sourcemaps restore application positions; dependency mappings must still identify the published artifact. A flattened dependency without retained metadata cannot reliably recover its original package identity.
 
+Use `VITE_LOGLINE_ENABLE=false pnpm exec vite build` in CI. Leave `enable` unset in the Vite plugin for the environment to control it, or set `enable: false` explicitly. In local builds, `VITE_LOG_LEVEL=TRACE` retains every level when no explicit `level` is set. Disabling logs removes all statically recognized Logline level calls in application code and bundled dependencies, including `ERROR` and argument evaluation. Keep business side effects outside log arguments. Dynamic logger calls, native `console.*` calls, and independently enabled integrations are outside this filter. Verify the emitted JavaScript with a known Logline message when configuring CI.
+
 Install unplugin-auto-import separately when needed:
 
 ```ts

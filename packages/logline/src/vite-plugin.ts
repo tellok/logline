@@ -22,6 +22,7 @@ import { type IndexedDBLoggingOptions } from './plugins/indexeddb';
 
 const { dirname, isAbsolute, relative, resolve } = path;
 const LOG_LEVEL_ENV_NAME = 'VITE_LOG_LEVEL';
+const LOGLINE_ENABLE_ENV_NAME = 'VITE_LOGLINE_ENABLE';
 const AUTO_INDEXEDDB_MODULE_ID = 'virtual:logline/auto-indexeddb';
 const RESOLVED_AUTO_INDEXEDDB_MODULE_ID = `\0${AUTO_INDEXEDDB_MODULE_ID}`;
 
@@ -32,6 +33,15 @@ export interface LoglineVitePluginOptions {
    * @default 'LOG'
    */
   readonly level?: LogLevelName | string;
+  /**
+   * Control Logline call removal in `vite build`.
+   * When true, the configured `level` determines which calls to keep.
+   * When false, remove all statically recognized Logline calls, including ERROR, without evaluating their arguments.
+   * Precedence is this option, then process `VITE_LOGLINE_ENABLE`, then the merged Vite `.env` files.
+   * The environment variable accepts true and false case-insensitively.
+   * @default true
+   */
+  readonly enable?: boolean;
   /**
    * Inject a startup script into index.html to buffer console output and errors before the application starts.
    */
@@ -114,7 +124,6 @@ const normalizeLevel = (level?: LogLevelName | string): LogLevelName | undefined
   const upper = typeof level === 'string' ? level.toUpperCase() : level;
   return LOG_LEVELS.find((candidate) => candidate === upper);
 };
-
 type LogLevelSource = 'option' | 'process-env' | 'project-env' | 'default';
 
 interface LogLevelCandidate {
@@ -151,21 +160,32 @@ const resolveLogLevel = (candidates: readonly LogLevelCandidate[]): LogLevelReso
 };
 
 /**
- * Read project environment files with loadEnv without inheriting process values for the same key.
+ * Parse a build enable flag from an external environment value.
+ * @param value Configured flag string.
+ * @returns Undefined when the value is absent or invalid.
+ */
+const parseEnableFlag = (value?: string): boolean | undefined => {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === 'true') return true;
+  if (normalized === 'false') return false;
+  return undefined;
+};
+
+/**
+ * Read project environment files without process overrides for the Logline keys.
  * @param mode Current Vite mode.
  * @param envDir Vite environment file directory.
+ * @returns Merged Vite environment file values for Logline.
  */
-const loadProjectEnvLogLevel = (mode: string, envDir: string): string | undefined => {
-  const hasProcessValue = Object.prototype.hasOwnProperty.call(process.env, LOG_LEVEL_ENV_NAME);
-  const processValue = process.env[LOG_LEVEL_ENV_NAME];
-  if (hasProcessValue) {
-    delete process.env[LOG_LEVEL_ENV_NAME];
-  }
+const loadProjectEnv = (mode: string, envDir: string): Record<string, string> => {
+  const names = [LOG_LEVEL_ENV_NAME, LOGLINE_ENABLE_ENV_NAME];
+  const processValues = names.map((name) => [name, process.env[name]] as const);
+  for (const name of names) delete process.env[name];
   try {
-    return loadEnv(mode, envDir)[LOG_LEVEL_ENV_NAME];
+    return loadEnv(mode, envDir, names);
   } finally {
-    if (hasProcessValue && processValue !== undefined) {
-      process.env[LOG_LEVEL_ENV_NAME] = processValue;
+    for (const [name, value] of processValues) {
+      if (value !== undefined) process.env[name] = value;
     }
   }
 };
@@ -354,25 +374,18 @@ const resolveCalleeName = (callee: t.CallExpression['callee']): string | undefin
   if (t.isIdentifier(callee)) return callee.name;
   if (t.isMemberExpression(callee) || t.isOptionalMemberExpression(callee)) {
     const prop = callee.property;
-    if (t.isIdentifier(prop)) return prop.name;
+    if (!callee.computed && t.isIdentifier(prop)) return prop.name;
     if (t.isStringLiteral(prop)) return prop.value;
     return undefined;
   }
   if (t.isSequenceExpression(callee)) {
     const last = callee.expressions.at(-1);
-    return resolveCalleeName(last as t.CallExpression['callee']);
+    return last ? resolveCalleeName(last) : undefined;
   }
   return undefined;
 };
 
-const isLoglineCall = (callee: t.CallExpression['callee']): boolean => {
-  const name = resolveCalleeName(callee);
-  if (!name) return false;
-  const normalized = normalizeCalleeName(name);
-  // Skip names outside the supported level set.
-  if (!CALL_MACRO_NAMES.has(normalized)) return false;
-  return true;
-};
+type LoggingCall = t.CallExpression | t.OptionalCallExpression;
 
 /**
  * Resolve the actual callee, including SequenceExpression wrappers.
@@ -540,7 +553,7 @@ const shouldTransformMacro = (id: string): boolean => {
  * @param path Log call path.
  * @param allowUnbound Whether unbound auto-import calls are allowed in application code.
  */
-const isValidLoggingImport = (path: NodePath<t.CallExpression>, allowUnbound: boolean): boolean => {
+const isValidLoggingImport = (path: NodePath<LoggingCall>, allowUnbound: boolean): boolean => {
   const targetCallee = resolveCallTarget(path.node.callee);
   if (!targetCallee) return false;
 
@@ -554,13 +567,27 @@ const isValidLoggingImport = (path: NodePath<t.CallExpression>, allowUnbound: bo
   if (t.isMemberExpression(targetCallee) || t.isOptionalMemberExpression(targetCallee)) {
     const obj = targetCallee.object;
     if (t.isIdentifier(obj)) {
-      const binding = path.scope.getBinding(obj.name);
-      if (!binding) return allowUnbound;
-      return isLoglineBinding(binding);
+      return isLoglineBinding(path.scope.getBinding(obj.name));
     }
   }
 
   return false;
+};
+
+/** Resolve a static Logline call's level, including aliased named imports. */
+const resolveCallLevel = (path: NodePath<LoggingCall>): LogLevelName | undefined => {
+  const callee = path.node.callee;
+  const target = resolveCallTarget(callee);
+  if (t.isIdentifier(target)) {
+    const binding = path.scope.getBinding(target.name);
+    if (binding?.path.isImportSpecifier()) {
+      const { imported } = binding.path.node;
+      const name = t.isIdentifier(imported) ? imported.name : imported.value;
+      return LOG_LEVELS.find((level) => level === name);
+    }
+  }
+  const name = resolveCalleeName(callee);
+  return name ? LOG_LEVELS.find((level) => level === normalizeCalleeName(name)) : undefined;
 };
 
 type PossibleSourceMap = {
@@ -685,74 +712,73 @@ const transformLoggingCode = (
     }
   }
 
-  traverseFn(ast, {
-    CallExpression(path: NodePath<t.CallExpression>) {
-      if (!isLoglineCall(path.node.callee)) return;
-      const calleeName = resolveCalleeName(path.node.callee);
-      if (!calleeName) return;
-      const normalizedName = normalizeCalleeName(calleeName);
-      const level = LOG_LEVELS.find((item) => item === normalizedName);
-      if (!level) return;
-      if (!isValidLoggingImport(path, !isNpmDependency)) return;
+  const transformCall = (path: NodePath<LoggingCall>): void => {
+    const level = resolveCallLevel(path);
+    if (!level) return;
+    if (!isValidLoggingImport(path, !isNpmDependency)) return;
 
-      if (needStrip && options.dropLevelSet.has(level)) {
-        const start = path.node.start;
-        const end = path.node.end;
-        if (typeof start === 'number' && typeof end === 'number') {
-          ms.overwrite(start, end, 'void 0');
-          stripMutated = true;
-        }
-        return;
+    if (needStrip && options.dropLevelSet.has(level)) {
+      const start = path.node.start;
+      const end = path.node.end;
+      if (typeof start === 'number' && typeof end === 'number') {
+        ms.overwrite(start, end, '(void 0)');
+        path.skip();
+        stripMutated = true;
       }
+      return;
+    }
 
-      if (!needMacro) return;
-      const [firstArg] = path.node.arguments;
-      if (!firstArg) return;
+    if (!needMacro) return;
+    const [firstArg] = path.node.arguments;
+    if (!firstArg) return;
 
-      // Read dependency function names from the published AST instead of tracing back to author source.
-      const fnName = options.includeFunctionName ? getFunctionName(path) : undefined;
-      let line = path.node.loc?.start.line;
-      let column = path.node.loc ? path.node.loc.start.column + 1 : undefined;
+    // Read dependency function names from the published AST instead of tracing back to author source.
+    const fnName = options.includeFunctionName ? getFunctionName(path) : undefined;
+    let line = path.node.loc?.start.line;
+    let column = path.node.loc ? path.node.loc.start.column + 1 : undefined;
 
-      if (consumer && line && path.node.loc?.start.column !== undefined) {
-        const original = consumer.originalPositionFor({
-          column: path.node.loc.start.column,
-          line,
-        });
-        const canUseOriginal = !isNpmDependency || isSameArtifactSource(original.source, relPath);
-        if (canUseOriginal && typeof original.line === 'number') {
-          line = original.line;
-        }
-        if (canUseOriginal && typeof original.column === 'number') {
-          column = original.column + 1;
-        }
+    if (consumer && line && path.node.loc?.start.column !== undefined) {
+      const original = consumer.originalPositionFor({
+        column: path.node.loc.start.column,
+        line,
+      });
+      const canUseOriginal = !isNpmDependency || isSameArtifactSource(original.source, relPath);
+      if (canUseOriginal && typeof original.line === 'number') {
+        line = original.line;
       }
-      const lineSuffix = line ? `:${line}` : '';
-      const columnSuffix = line && column ? `:${column}` : '';
-      const namespace = location.packageName ? `npm:${location.packageName}` : options.namespace;
-      const tagPrefix = namespace ? `${namespace} ` : '';
-      const prefix = `[${tagPrefix}${relPath}${lineSuffix}${columnSuffix}${fnName ? ` ${fnName}` : ''}] `;
+      if (canUseOriginal && typeof original.column === 'number') {
+        column = original.column + 1;
+      }
+    }
+    const lineSuffix = line ? `:${line}` : '';
+    const columnSuffix = line && column ? `:${column}` : '';
+    const namespace = location.packageName ? `npm:${location.packageName}` : options.namespace;
+    const tagPrefix = namespace ? `${namespace} ` : '';
+    const prefix = `[${tagPrefix}${relPath}${lineSuffix}${columnSuffix}${fnName ? ` ${fnName}` : ''}] `;
 
-      if (t.isStringLiteral(firstArg)) {
-        const message = location.packageName
-          ? applyNpmPrefix(firstArg.value, prefix, location.packageName)
-          : prefix + firstArg.value;
-        const next = JSON.stringify(message);
-        const start = firstArg.start;
-        const end = firstArg.end;
-        if (typeof start !== 'number' || typeof end !== 'number') return;
-        ms.overwrite(start, end, next);
+    if (t.isStringLiteral(firstArg)) {
+      const message = location.packageName
+        ? applyNpmPrefix(firstArg.value, prefix, location.packageName)
+        : prefix + firstArg.value;
+      const next = JSON.stringify(message);
+      const start = firstArg.start;
+      const end = firstArg.end;
+      if (typeof start !== 'number' || typeof end !== 'number') return;
+      ms.overwrite(start, end, next);
+      macroMutated = true;
+    } else if (t.isTemplateLiteral(firstArg)) {
+      const firstQuasi = firstArg.quasis[0];
+      if (firstQuasi && typeof firstQuasi.start === 'number' && typeof firstQuasi.end === 'number') {
+        const raw = firstQuasi.value.raw;
+        const next = location.packageName ? applyNpmPrefix(raw, prefix, location.packageName) : prefix + raw;
+        ms.overwrite(firstQuasi.start, firstQuasi.end, next);
         macroMutated = true;
-      } else if (t.isTemplateLiteral(firstArg)) {
-        const firstQuasi = firstArg.quasis[0];
-        if (firstQuasi && typeof firstQuasi.start === 'number' && typeof firstQuasi.end === 'number') {
-          const raw = firstQuasi.value.raw;
-          const next = location.packageName ? applyNpmPrefix(raw, prefix, location.packageName) : prefix + raw;
-          ms.overwrite(firstQuasi.start, firstQuasi.end, next);
-          macroMutated = true;
-        }
       }
-    },
+    }
+  };
+  traverseFn(ast, {
+    CallExpression: transformCall,
+    OptionalCallExpression: transformCall,
   });
 
   if (needMacro && !macroMutated && !stripMutated && isVueScript) {
@@ -1049,7 +1075,9 @@ const bundleHtmlInteropInline = async (target: string, minify: boolean): Promise
 };
 
 /**
- * Vite plugin that replaces lower-level calls so the bundler can remove them.
+ * Create Vite plugins for source attribution, build-time log removal, and optional startup integration.
+ * @param options Build log threshold and integration settings.
+ * @returns Vite plugin or plugin array for the configured integration.
  */
 export const loglineVitePlugin = (options: LoglineVitePluginOptions = {}): Plugin | Plugin[] => {
   const enableHtmlInterop = Boolean(options.htmlInterop);
@@ -1081,7 +1109,8 @@ export const loglineVitePlugin = (options: LoglineVitePluginOptions = {}): Plugi
     { source: 'option', value: options.level },
     { source: 'process-env', value: process.env[LOG_LEVEL_ENV_NAME] },
   ]);
-  let dropLevelSet = new Set<LogLevelName>(resolvePureCalls(logLevelResolution.level));
+  let stripLogs = false;
+  let dropLevelSet = new Set<LogLevelName>();
   let projectRoot = process.cwd();
   let viteCacheDir = resolve(projectRoot, 'node_modules/.vite');
   let resolvedViteBase = '/';
@@ -1098,13 +1127,19 @@ export const loglineVitePlugin = (options: LoglineVitePluginOptions = {}): Plugi
       projectRoot = resolveRoot(existingConfig.root);
       moduleLocationResolver.setProjectRoot(projectRoot);
       const envDir = resolveEnvDir(existingConfig.envDir, projectRoot);
-      const projectEnvLevel = loadProjectEnvLogLevel(env.mode, envDir);
+      const projectEnv = loadProjectEnv(env.mode, envDir);
+      const enable =
+        options.enable ??
+        parseEnableFlag(process.env[LOGLINE_ENABLE_ENV_NAME]) ??
+        parseEnableFlag(projectEnv[LOGLINE_ENABLE_ENV_NAME]) ??
+        true;
+      stripLogs = !enable;
       logLevelResolution = resolveLogLevel([
         { source: 'option', value: options.level },
         { source: 'process-env', value: process.env[LOG_LEVEL_ENV_NAME] },
-        { source: 'project-env', value: projectEnvLevel },
+        { source: 'project-env', value: projectEnv[LOG_LEVEL_ENV_NAME] },
       ]);
-      dropLevelSet = new Set<LogLevelName>(resolvePureCalls(logLevelResolution.level));
+      dropLevelSet = new Set(stripLogs ? LOG_LEVELS : resolvePureCalls(logLevelResolution.level));
 
       const config: OptimizerConfig = {};
 
@@ -1126,6 +1161,7 @@ export const loglineVitePlugin = (options: LoglineVitePluginOptions = {}): Plugi
       // Force sourcemap if needed to ensure accurate line numbers
       if (
         env.command === 'build' &&
+        !stripLogs &&
         macroEnabled &&
         macroSourcemapRetrack &&
         existingConfig.build?.sourcemap !== false &&
@@ -1148,7 +1184,9 @@ export const loglineVitePlugin = (options: LoglineVitePluginOptions = {}): Plugi
       viteCacheDir = resolved.cacheDir || resolve(projectRoot, 'node_modules/.vite');
       resolvedViteBase = resolved.base || '/';
       moduleLocationResolver.setProjectRoot(projectRoot);
-      if (isBuildCommand) {
+      if (isBuildCommand && stripLogs) {
+        resolved.logger.info('[logline] Build log stripping enabled: all Logline levels');
+      } else if (isBuildCommand) {
         resolved.logger.info(
           `[logline] Build log level: ${logLevelResolution.level}, source: ${describeLogLevelSource(
             logLevelResolution.source,
@@ -1162,8 +1200,9 @@ export const loglineVitePlugin = (options: LoglineVitePluginOptions = {}): Plugi
       const viteBaseResult = transformViteBaseMarker(code, id, resolvedViteBase);
       if (viteBaseResult) return viteBaseResult;
 
+      const isLoglessBuild = isBuildCommand && stripLogs;
       const shouldStrip = isBuildCommand && dropLevelSet.size > 0;
-      const shouldHandleMacro = macroEnabled && shouldTransformMacro(id);
+      const shouldHandleMacro = macroEnabled && !isLoglessBuild && shouldTransformMacro(id);
       const shouldHandleStrip = shouldStrip && shouldTransformMacro(id);
       if (!shouldHandleMacro && !shouldHandleStrip) return undefined;
 
@@ -1171,7 +1210,8 @@ export const loglineVitePlugin = (options: LoglineVitePluginOptions = {}): Plugi
       if (isModuleInDirectory(id, viteCacheDir)) return undefined;
 
       const activeDropLevelSet: ReadonlySet<LogLevelName> = shouldHandleStrip ? dropLevelSet : new Set<LogLevelName>();
-      const map = macroSourcemapRetrack ? normalizeToRawSourceMap(this.getCombinedSourcemap()) : undefined;
+      const map =
+        shouldHandleMacro && macroSourcemapRetrack ? normalizeToRawSourceMap(this.getCombinedSourcemap()) : undefined;
       const location = moduleLocationResolver.resolve(id);
       const result = transformLoggingCode(
         code,

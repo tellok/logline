@@ -39,7 +39,7 @@ const config = {
 test(`Vite ${version}: strict public types`, () => {
   writeFileSync(
     join(root, 'consumer.ts'),
-    "import { defineConfig } from 'vite';\nimport { loglineVitePlugin } from 'logline/vite-plugin';\nexport default defineConfig({ plugins: [loglineVitePlugin({ indexedDB: true, htmlInterop: true })] });\n",
+    "import { defineConfig } from 'vite';\nimport { loglineVitePlugin } from 'logline/vite-plugin';\nexport default defineConfig({ plugins: [loglineVitePlugin({ enable: true, indexedDB: true, htmlInterop: true })] });\n",
   );
   execFileSync(
     process.execPath,
@@ -61,7 +61,11 @@ test(`Vite ${version}: strict public types`, () => {
 
 /** Exercise actual serve hooks and each major's native dependency optimizer. */
 test(`Vite ${version}: development transforms and dependency optimization`, async () => {
-  const server = await createServer({ ...config, server: { middlewareMode: true, watch: null } });
+  const server = await createServer({
+    ...config,
+    plugins: [loglineVitePlugin({ enable: false, level: 'WARN', indexedDB: true, htmlInterop: true })],
+    server: { middlewareMode: true, watch: null },
+  });
   try {
     const html = await server.transformIndexHtml('/synthetic-base/', readFileSync(join(root, 'index.html'), 'utf8'));
     assert.match(html, /__LOGLINE_HTML_INTEROP__/);
@@ -110,4 +114,82 @@ test(`Vite ${version}: production build`, async () => {
   assert.ok(
     maps.some((map) => map.mappings && map.sources.some((source) => resolve(assets, source) === join(root, 'main.ts'))),
   );
+});
+
+test(`Vite ${version}: the enable switch removes all Logline levels from CI output`, async () => {
+  writeFileSync(join(root, '.env'), 'VITE_LOG_LEVEL=TRACE\n');
+  writeFileSync(join(root, '.env.ci'), 'VITE_LOGLINE_ENABLE=False\n');
+  writeFileSync(
+    join(root, 'main.ts'),
+    `import { TRACE, DEBUG, LOG, WARN, ERROR as reportError } from 'logline';
+import * as logline from 'logline';
+import { dependencyLog } from 'synthetic-dependency';
+TRACE('fixture-trace');
+DEBUG('fixture-debug');
+LOG('fixture-log');
+WARN('fixture-warn');
+reportError('fixture-error', logline.ERROR?.('fixture-nested', console.log('fixture-log-argument')));
+logline['ERROR']('fixture-member');
+logline.ERROR?.('fixture-optional');
+dependencyLog();
+console.log('fixture-ordinary-console');
+globalThis.ERROR?.('fixture-unrelated-global');
+`,
+  );
+  const readBuildCode = async (mode, options) => {
+    const result = await build({
+      ...config,
+      mode,
+      plugins: [loglineVitePlugin(options)],
+      build: { minify: false, write: false },
+    });
+    const results = Array.isArray(result) ? result : [result];
+    return results
+      .flatMap(({ output }) => output)
+      .filter(({ type }) => type === 'chunk')
+      .map(({ code }) => code)
+      .join('\n');
+  };
+  const local = await readBuildCode('production');
+  const ci = await readBuildCode('ci', { level: 'TRACE' });
+  for (const marker of [
+    'fixture-trace',
+    'fixture-debug',
+    'fixture-log',
+    'fixture-warn',
+    'fixture-error',
+    'fixture-nested',
+    'fixture-log-argument',
+    'fixture-member',
+    'fixture-optional',
+    'dependency-message',
+    'dependency-warning',
+  ]) {
+    assert.ok(local.includes(marker), `Local build must retain ${marker}`);
+    assert.ok(!ci.includes(marker), `CI build must erase ${marker}`);
+  }
+  assert.match(local, /\[logline:logger\]/);
+  assert.doesNotMatch(ci, /\[logline:logger\]|createConsoleWriter/);
+  assert.match(ci, /console\.log\(['"]fixture-ordinary-console['"]\)/);
+  assert.ok(ci.includes('fixture-unrelated-global'));
+  assert.ok(!(await readBuildCode('production', { enable: false, logPrefixMacro: false })).includes('fixture-error'));
+  const reenabled = await readBuildCode('ci', { enable: true, level: 'ERROR' });
+  assert.ok(reenabled.includes('fixture-error'));
+  assert.ok(!reenabled.includes('fixture-warn'));
+  const previousEnable = process.env.VITE_LOGLINE_ENABLE;
+  const previousLevel = process.env.VITE_LOG_LEVEL;
+  try {
+    process.env.VITE_LOGLINE_ENABLE = 'true';
+    process.env.VITE_LOG_LEVEL = 'ERROR';
+    const processOverride = await readBuildCode('ci');
+    assert.ok(processOverride.includes('fixture-error'));
+    assert.ok(!processOverride.includes('fixture-warn'));
+    process.env.VITE_LOGLINE_ENABLE = 'false';
+    assert.ok(!(await readBuildCode('production')).includes('fixture-error'));
+  } finally {
+    if (previousEnable === undefined) delete process.env.VITE_LOGLINE_ENABLE;
+    else process.env.VITE_LOGLINE_ENABLE = previousEnable;
+    if (previousLevel === undefined) delete process.env.VITE_LOG_LEVEL;
+    else process.env.VITE_LOG_LEVEL = previousLevel;
+  }
 });

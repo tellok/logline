@@ -120,6 +120,19 @@ The minimum build level is resolved from the explicit `level`, process `VITE_LOG
 
 The Vite peer range is `^5.2.8 || ^6.2.1 || ^7.0.0 || ^8.0.0`. Higher Vite versions also require a compatible Node.js version. Development dependency attribution uses native Rolldown transforms on Vite 8 and esbuild hooks on Vite 5/6/7; no optimizer configuration is required. CI tests packed-package consumers against the latest release of each supported Vite major (5–8).
 
+### Keep logs locally and strip them in CI
+
+Use `loglineVitePlugin()` and set `VITE_LOGLINE_ENABLE=false` in CI. Use `VITE_LOG_LEVEL` to select the minimum build level when logs are enabled.
+
+```sh
+VITE_LOG_LEVEL=TRACE pnpm exec vite build  # Local build with all Logline levels
+VITE_LOGLINE_ENABLE=false pnpm exec vite build  # CI build with Logline calls stripped
+```
+
+The plugin resolves the explicit `enable` option first, then process `VITE_LOGLINE_ENABLE`, then Vite `.env*` files. The environment variable accepts `true` and `false` case-insensitively and defaults to `true` when unset. To use a CI mode, put `VITE_LOGLINE_ENABLE=false` in `.env.ci` and run `pnpm exec vite build --mode ci`. Set `loglineVitePlugin({ enable: false })` to disable logs directly in the Vite config.
+
+Disabling logs erases statically recognized `TRACE`, `DEBUG`, `LOG`, `WARN`, and `ERROR` calls in application code and bundled dependencies, including evaluation of their arguments. Keep application side effects outside log arguments. This setting applies to `vite build`. Dynamic logger calls, native `console.*` calls, and separately enabled logging integrations are outside the build filter.
+
 ## Auto-import
 
 ```ts
