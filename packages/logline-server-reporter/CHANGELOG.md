@@ -1,5 +1,12 @@
 # Logline server reporter
 
+## 2.0.0-beta.2
+
+### Patch Changes
+
+- Updated dependencies [dba774e]
+  - logline@2.0.0-beta.2
+
 ## 2.0.0-beta.1
 
 ### Minor Changes

@@ -1,5 +1,9 @@
 # 变更记录
 
+## 2.0.0-beta.2
+
+- Vite 构建新增 enable 和 VITE_LOGLINE_ENABLE 开关，设为 false 可移除所有可识别的 Logline 调用，包括 ERROR。
+
 ## 2.0.0-beta.1
 
 - 新增双语在线文档，在经核验的 beta 版本发布后部署到 GitHub Pages。
