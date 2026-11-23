@@ -49,13 +49,13 @@ for (let pr of requests) {
     for (const run of runs) {
       if (
         ['queued', 'in_progress', 'waiting', 'pending'].includes(run.status) &&
-        (run.head_branch?.startsWith(`codex/ci/pr-${pr.number}-`) ||
+        (run.head_branch?.startsWith(`ci/merged/pr-${pr.number}-`) ||
           run.pull_requests?.some((item) => item.number === pr.number))
       ) {
         api(`repos/${repository}/actions/runs/${run.id}/cancel`, { method: 'POST' });
       }
     }
-    const ref = `codex/ci/pr-${pr.number}-${pr.head.sha.slice(0, 12)}-${baseSha.slice(0, 12)}`;
+    const ref = `ci/merged/pr-${pr.number}-${pr.head.sha.slice(0, 12)}-${baseSha.slice(0, 12)}`;
     const existing = api(`repos/${repository}/git/matching-refs/heads/${ref}`).find(
       (entry) => entry.ref === `refs/heads/${ref}`,
     );

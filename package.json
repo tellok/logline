@@ -12,7 +12,6 @@
     "type-check": "nx run-many -t type-check && tsc --noEmit",
     "format:check": "prettier packages scripts deploy docs skills .vitepress .github .changeset .release '*.json' '*.ts' '*.md' '*.{yaml,yml}' --check",
     "changeset": "changeset",
-    "version:prepare": "node scripts/prepare-version.mjs",
     "release:beta": "node scripts/publish-release.mjs",
     "verify": "node scripts/verify.mjs",
     "test:release": "node --test --test-reporter=tap scripts/*.test.mjs",

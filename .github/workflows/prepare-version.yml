@@ -4,30 +4,46 @@ on:
     branches: [master]
   workflow_dispatch:
 permissions:
-  contents: write
-  pull-requests: write
-  actions: write
+  contents: read
 concurrency:
   group: version-preparation
   cancel-in-progress: true
 jobs:
   prepare:
-    runs-on: 'ubuntu-latest'
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v6
+          persist-credentials: false
+      - id: pending
+        uses: tellok/actions/github-actions/changesets-version-pr@9df224593aad286a012adc6760fa7de7cb175e22
+        with:
+          operation: detect
+      - if: steps.pending.outputs.found == 'true'
+        uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
-          package-manager-cache: false
-      - id: pending
-        run: node scripts/release-contract.mjs
-      - if: steps.pending.outputs.pending == 'true'
-        uses: pnpm/action-setup@v6
-      - if: steps.pending.outputs.pending == 'true'
-        run: pnpm install --frozen-lockfile
-      - if: steps.pending.outputs.pending == 'true'
-        run: pnpm run version:prepare
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - if: steps.pending.outputs.found == 'true'
+        run: corepack enable && pnpm install --frozen-lockfile
+      - if: steps.pending.outputs.found == 'true'
+        uses: tellok/actions/github-actions/changesets-version-pr@9df224593aad286a012adc6760fa7de7cb175e22
+        with:
+          operation: maintain
+          branch: release/version-update
+          version-command: node scripts/version-maintain.mjs
+          allowed-paths: |
+            .changeset/pre.json
+            packages/logline/package.json
+            packages/logline/CHANGELOG.md
+            packages/logline/CHANGELOG.zh-CN.md
+            packages/logline-server-reporter/package.json
+            packages/logline-server-reporter/CHANGELOG.md
+            packages/logline-server-reporter/CHANGELOG.zh-CN.md
+            pnpm-lock.yaml
+            .release/version-plan.json
+          managed-author: ${{ vars.VERSION_PR_AUTHOR }}
+          github-token: ${{ secrets.VERSION_PR_TOKEN }}
+          ownership-marker: '<!-- logline:version-pr -->'
+          title: 'release: version update'
+          commit-message: 'chore(release): version update'
+          body-file: .release/version-pr-body.md
