@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0-beta.2
+
+### Minor Changes
+
+- dba774e: Add `enable` to the Vite plugin and `VITE_LOGLINE_ENABLE` to its environment settings so CI builds can strip every recognized Logline call, including `ERROR`.
+
 ## 2.0.0-beta.1
 
 ### Minor Changes

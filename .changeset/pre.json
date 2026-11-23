@@ -11,6 +11,7 @@
     "event-tags",
     "first-v2-beta",
     "self-hosted-reporting",
+    "vite-build-log-enable",
     "vite5-compatibility",
     "vite8-native-optimizer",
     "workspace-foundation"

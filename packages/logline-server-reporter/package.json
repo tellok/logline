@@ -1,6 +1,6 @@
 {
   "name": "logline-server-reporter",
-  "version": "2.0.0-beta.1",
+  "version": "2.0.0-beta.2",
   "description": "Configurable HTTP reporter for a self-hosted Logline server.",
   "type": "module",
   "main": "./dist/index.cjs",
