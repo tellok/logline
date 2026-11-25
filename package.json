@@ -19,6 +19,7 @@
     "docs:build": "node scripts/prepare-docs.mjs && vitepress build && node scripts/check-docs.mjs",
     "docs:preview": "vitepress preview",
     "pack:logline": "pnpm --dir packages/logline pack --pack-destination ../..",
+    "pack:cli": "pnpm --dir packages/logline-server-cli pack --pack-destination ../..",
     "pack:reporter": "pnpm --dir packages/logline-server-reporter pack --pack-destination ../..",
     "test:vite": "node scripts/test-vite.mjs"
   },

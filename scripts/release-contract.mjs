@@ -9,7 +9,7 @@ const require = createRequire(import.meta.url);
 
 export const VERSION_BRANCH = 'release/version-update';
 export const OWNERSHIP_MARKER = '<!-- logline:version-pr -->';
-export const PUBLIC_PACKAGES = ['logline', 'logline-server-reporter'];
+export const PUBLIC_PACKAGES = ['logline', 'logline-server-reporter', 'logline-server-cli'];
 export const VERSION_FILES = [
   ...PUBLIC_PACKAGES.flatMap((name) =>
     ['package.json', 'CHANGELOG.md', 'CHANGELOG.zh-CN.md'].map((file) => `packages/${name}/${file}`),

@@ -2,7 +2,7 @@
 
 English | [简体中文](./workspace.zh-CN.md)
 
-The workspace has two public beta packages: `packages/logline` (logger and optional reporting scheduler) and `packages/logline-server-reporter` (HTTP uploader). `packages/logline-server` is the private PostgreSQL-backed service; see [self-hosting](./server-operations.md).
+The workspace has three public beta packages: `packages/logline` (logger and optional reporting scheduler), `packages/logline-server-reporter` (HTTP uploader), and `packages/logline-server-cli` ([terminal queries](./cli.md)). `packages/logline-server` is the private PostgreSQL-backed service; see [self-hosting](./server-operations.md).
 
 ## Toolchain
 
@@ -23,10 +23,11 @@ pnpm run verify
 pnpm run docs:build
 pnpm run pack:logline
 pnpm run pack:reporter
-node scripts/check-package.mjs --reporter
+pnpm run pack:cli
+node scripts/check-package.mjs --reporter --cli
 ```
 
-`verify` requires every core, server, uploader and release-contract test to run without skips. It checks formatting, builds both libraries and stages public documentation. It then packs and opens both real tarballs in a temporary consumer, verifies the uploader's published peer version, and exercises ESM, CommonJS and strict TypeScript imports. Product tests run directly during this audit so a temporary report path is never lost to a cache hit. `pack:logline` runs `pnpm pack` inside the library and puts its tarball at the repository root. Its lifecycle type-checks and builds through Nx, then refreshes README, license, documentation, and consumer Skill copies from the root. Generated copies are ignored; edit their root sources.
+`verify` requires every core, server, uploader, CLI, and release-contract test to run without skips. It checks formatting, builds the public packages, checks the CLI executable, and stages public documentation. It then packs and opens both real tarballs in a temporary consumer, verifies the uploader's published peer version, and exercises ESM, CommonJS and strict TypeScript imports. Product tests run directly during this audit so a temporary report path is never lost to a cache hit. `pack:logline` runs `pnpm pack` inside the library and puts its tarball at the repository root. Its lifecycle type-checks and builds through Nx, then refreshes README, license, documentation, and consumer Skill copies from the root. Generated copies are ignored; edit their root sources.
 
 ## Layout and task caching
 
@@ -53,4 +54,4 @@ pnpm run clean
 
 ## Releases
 
-Changesets versions the two public packages independently: a Changeset names only the packages it changes, and the uploader's `workspace:*` peer dependency propagates a patch bump when its core changes. At pack time pnpm resolves the uploader's workspace peer to the delivered beta range. See the [release-flow contract](./release-flow.md) for the version and publication checks.
+Changesets versions the public packages independently: a Changeset names only the packages it changes, and the uploader's `workspace:*` peer dependency propagates a patch bump when its core changes. At pack time pnpm resolves the uploader's workspace peer to the delivered beta range. See the [release-flow contract](./release-flow.md) for the version and publication checks.

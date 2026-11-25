@@ -26,7 +26,7 @@ assert.equal(process.env.GITHUB_ACTIONS, 'true', 'Publish using the trusted GitH
 project(); // Resolve the repository identity before the first authenticated write.
 const folder = mkdtempSync(join(tmpdir(), 'logline-delivery-'));
 const registry = '--registry=https://registry.npmjs.org/';
-const KEYS = { logline: 'core', 'logline-server-reporter': 'reporter' };
+const KEYS = { logline: 'core', 'logline-server-reporter': 'reporter', 'logline-server-cli': 'cli' };
 
 /** Preserve latest on the newest stable v1 subversion for the established `logline` package. */
 const assertLatest = () => {

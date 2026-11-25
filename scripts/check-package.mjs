@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 
 const require = createRequire(new URL('../packages/logline/package.json', import.meta.url));
 const root = new URL('../packages/logline/', import.meta.url);
@@ -44,3 +46,12 @@ if (process.argv.includes('--reporter')) {
   }
 }
 assert.equal(runtime.createLoglineAutoImport().resolvers[0]('LOG').from, 'logline');
+
+if (process.argv.includes('--cli')) {
+  const cli = new URL('../packages/logline-server-cli/', import.meta.url);
+  const manifest = JSON.parse(readFileSync(new URL('package.json', cli), 'utf8'));
+  const bin = new URL(manifest.bin['logline-server-cli'], cli);
+  assert.match(readFileSync(bin, 'utf8'), /^#!\/usr\/bin\/env node\r?\n/);
+  const help = execFileSync(process.execPath, [fileURLToPath(bin), '--help'], { encoding: 'utf8' });
+  assert.match(help, /^Usage: logline-server-cli /);
+}
