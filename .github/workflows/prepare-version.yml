@@ -41,6 +41,9 @@ jobs:
             packages/logline-server-reporter/package.json
             packages/logline-server-reporter/CHANGELOG.md
             packages/logline-server-reporter/CHANGELOG.zh-CN.md
+            packages/logline-server-cli/package.json
+            packages/logline-server-cli/CHANGELOG.md
+            packages/logline-server-cli/CHANGELOG.zh-CN.md
             pnpm-lock.yaml
             .release/version-plan.json
           managed-author: ${{ vars.VERSION_PR_AUTHOR }}

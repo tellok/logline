@@ -87,6 +87,8 @@ const reporter = createLoglineServerReporter({
 configureLogline({ plugins: [reporter] });
 ```
 
+For terminal queries, use the [Logline Server CLI](./docs/cli.md) with a personal access token. `logline-server-cli log list` formats logs for reading by default, and `--raw` writes the original API response.
+
 Create a project ingestion key in the admin API, then construct `https://<key>@<host>[/prefix]/<project-uuid>`. The DSN can only submit events to that project; it belongs to the project, not a member. A browser DSN is public: anyone who copies it can submit events. Use a separate key for your backend, and generate trusted audit events there. Browser uploads from any origin are accepted by default; set `LOGLINE_INGEST_ORIGINS` on the server to restrict them to exact origins. There is no implicit hosted endpoint, durable client queue, or upload of IndexedDB history. See the [reporting contract](./docs/reporting.md), [ingestion API](./docs/server-ingestion.md), [administration](./docs/server-admin.md), [Logs Explorer](./docs/server-explorer.md), [MCP tools](./docs/server-mcp.md), and [deployment and performance guide](./docs/server-operations.md).
 
 The MCP endpoint exposes read-only tools with the `logline_server_` prefix, such as `logline_server_rows`.
@@ -176,7 +178,7 @@ Declare the experimental Logline version in both `peerDependencies` and `devDepe
 
 ## Development and releases
 
-The pnpm workspace contains the core `logline` library, the public `logline-server-reporter` uploader, and the self-hosted `logline-server`. Nx caches builds and checks. See the bilingual [workspace guide](./docs/workspace.md) for toolchain selection, commands, caching, and packaging.
+The pnpm workspace contains the core `logline` library, the public `logline-server-reporter` uploader, the self-hosted `logline-server`, and the [Logline Server CLI](./docs/cli.md). Nx caches builds and checks. See the bilingual [workspace guide](./docs/workspace.md) for toolchain selection, commands, caching, and packaging.
 
 ```sh
 pnpm install

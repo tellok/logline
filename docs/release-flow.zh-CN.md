@@ -2,7 +2,7 @@
 
 [English](./release-flow.md) | 简体中文
 
-默认分支由 GitHub 元数据确定，当前为 master。此前默认分支的快照保留为 v1。Changesets CLI 固定为 2.29.7，公开 npm 包 `logline` 与 `logline-server-reporter` **独立维护版本**：变更集只声明它影响的包，内部依赖传播会按 patch 升级受影响的包。私有 `logline-server` 维护自己的 `package.json` 版本，以容器镜像交付，不发布到 npm。首次发布为 2.0.0-beta.0，后续更新继续使用 beta 模式，正式 v2 发布另行决定。
+默认分支由 GitHub 元数据确定，当前为 master。此前默认分支的快照保留为 v1。Changesets CLI 固定为 2.29.7，公开 npm 包 `logline`、`logline-server-reporter` 和 `logline-server-cli` **独立维护版本**：变更集只声明它影响的包，内部依赖传播会按 patch 升级受影响的包。私有 `logline-server` 维护自己的 `package.json` 版本，以容器镜像交付，不发布到 npm。首次发布为 2.0.0-beta.0，后续更新继续使用 beta 模式，正式 v2 发布另行决定。
 
 ## 事件与版本决策
 
@@ -48,11 +48,11 @@ Release 正文从各包自身 CHANGELOG 的本次精确版本章节生成。缺�
 
 检查作业只读仓库和 PR；版本准备通过 PAT 获得内容与 PR 写权限，检测只读；对应事件版本的目标重检控制器仅维护检查和临时引用；发布来源门禁只读；合格交付具备内容写权限及 OIDC；完成监听只精确清理已终结检查引用。
 
-需分别为两个 npm 包配置信任关系：tellok/logline 的 release.yml，不限制 environment，允许直接 npm publish。使用 Node.js 24 与 npm 11.15.0。发布优先使用 trusted publishing（OIDC）；认证失败时（例如全新包的首发），可使用 `secrets.NPM_TOKEN` 中的可选细粒度访问令牌重试。两个包都通过可信发布验证后，即可删除该备用令牌。产品、测试报告与打包文件只在作业本地消费；npm 包与 GitHub 正式资产独立持久保存。npm 交付后，独立作业部署文档站并发布带版本标签、支持 Linux amd64 和 arm64 的服务端镜像。镜像使用私有 `logline-server` 包自身版本打标签，发布到该包自己的 GitHub 预发布，附上 OCI 归档、部署包和校验和。镜像作业需要容器注册表包写权限和发布内容写权限。安装方法参阅[运维指南](./server-operations.zh-CN.md)。
+需分别为每个 npm 包配置信任关系：tellok/logline 的 release.yml，不限制 environment，允许直接 npm publish。使用 Node.js 24 与 npm 11.15.0。发布优先使用 trusted publishing（OIDC）；认证失败时（例如全新包的首发），可使用 `secrets.NPM_TOKEN` 中的可选细粒度访问令牌重试。所有包都通过可信发布验证后，即可删除该备用令牌。产品、测试报告与打包文件只在作业本地消费；npm 包与 GitHub 正式资产独立持久保存。npm 交付后，独立作业部署文档站并发布带版本标签、支持 Linux amd64 和 arm64 的服务端镜像。镜像使用私有 `logline-server` 包自身版本打标签，发布到该包自己的 GitHub 预发布，附上 OCI 归档、部署包和校验和。镜像作业需要容器注册表包写权限和发布内容写权限。安装方法参阅[运维指南](./server-operations.zh-CN.md)。
 
 ## Beta 与最新 v1
 
-发布显式指定 beta 标签，发布前后验证 `logline` 的 latest 等于所有已发布稳定 v1 中最大的次版本和补丁版本，而不是固定的 1.0.0。本流程不会写入 latest。logline@beta 安装 v2，logline@1 限制在 v1 主版本，普通 logline 安装仍获得最新稳定 v1。安装 `logline-server-reporter@beta` 可获取匹配的自托管上报包。
+发布显式指定 beta 标签，发布前后验证 `logline` 的 latest 等于所有已发布稳定 v1 中最大的次版本和补丁版本，而不是固定的 1.0.0。本流程不会写入 latest。logline@beta 安装 v2，logline@1 限制在 v1 主版本，普通 logline 安装仍获得最新稳定 v1。安装 `logline-server-reporter@beta` 可获取匹配的自托管上报包。安装 `logline-server-cli@beta` 可在终端查询日志。
 
 ## 并发与恢复
 
@@ -76,4 +76,4 @@ Pages 部署需要一个供 deploy-pages 消费的临时制品。部署尝试结
 
 本地使用 pnpm docs:dev、pnpm docs:build 和 pnpm docs:preview。README 和 Markdown 指南是唯一内容来源；生成的暂存目录和站点产物均被忽略且不进入 npm 包。
 
-私有 workspace 根包负责工具链，可发布清单与双语更新日志分别位于 `packages/logline` 与 `packages/logline-server-reporter`。版本准备只更新发布元数据，不构建产品。每个 Changeset 逐行列出目标包，对应的中文摘要在 `translations.json` 中维护，仅进入目标包的更新日志。如果一个包仅因依赖同步而升级，其日志会标明原因。交付前会从根目录源文件生成公开文档副本并验证包。详见 [Workspace 指南](./workspace.zh-CN.md)。
+私有 workspace 根包负责工具链，可发布清单与双语更新日志分别位于 `packages/logline`、`packages/logline-server-reporter` 和 `packages/logline-server-cli`。版本准备只更新发布元数据，不构建产品。每个 Changeset 逐行列出目标包，对应的中文摘要在 `translations.json` 中维护，仅进入目标包的更新日志。如果一个包仅因依赖同步而升级，其日志会标明原因。交付前会从根目录源文件生成公开文档副本并验证包。详见 [Workspace 指南](./workspace.zh-CN.md)。

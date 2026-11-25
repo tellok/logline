@@ -154,9 +154,10 @@ For a deliberate read-only observer mode, HTML Interop may run without IndexedDB
 | `logline/plugin/click-log` | Click/touch logging                    |
 | `logline/plugin/reporting` | Optional bounded reporting scheduler   |
 | `logline-server-reporter`  | Configurable self-hosted HTTP uploader |
+| `logline-server-cli`       | Terminal client for Logline Explorer   |
 
 Read the bundled README and docs for complete options and migration details.
 
 ## Repository development
 
-The pnpm workspace separates `packages/logline` (logger and generic reporting scheduler), `packages/logline-server-reporter` (public HTTP transport), and `packages/logline-server` (deployable service). For managed access, log investigation and querying, see the server Skill and `docs/server-explorer.md`. Use root Nx commands for build, type-check, lint, and test. Node.js 24.22.1 LTS and pnpm 11.25.0 are selected automatically with advisory version checks. Run `pnpm run pack:logline` to stage maintained root documentation and this Skill into the library before packaging. Edit root documentation sources, never generated package copies. See the distributed `docs/workspace.md` and `docs/workspace.zh-CN.md` for caching and release boundaries.
+The pnpm workspace separates `packages/logline` (logger and generic reporting scheduler), `packages/logline-server-reporter` (public HTTP transport), `packages/logline-server` (deployable service), and `packages/logline-server-cli` (terminal queries). For managed access, log investigation and querying, see the server Skill, `docs/server-explorer.md`, and `docs/cli.md`. Use root Nx commands for build, type-check, lint, and test. Node.js 24.22.1 LTS and pnpm 11.25.0 are selected automatically with advisory version checks. Run `pnpm run pack:logline` to stage maintained root documentation and this Skill into the library before packaging. Edit root documentation sources, never generated package copies. See the distributed `docs/workspace.md` and `docs/workspace.zh-CN.md` for caching and release boundaries.

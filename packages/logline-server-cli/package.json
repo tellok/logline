@@ -1,0 +1,55 @@
+{
+  "name": "logline-server-cli",
+  "version": "2.0.0-beta.0",
+  "description": "Query a self-hosted Logline server from the terminal.",
+  "type": "module",
+  "bin": {
+    "logline-server-cli": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tellok/logline.git",
+    "directory": "packages/logline-server-cli"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "beta"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "5.8.2"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src test --max-warnings 0",
+    "test": "node --test --test-reporter=tap test/*.test.mjs",
+    "build": "tsc",
+    "prepack": "pnpm run build",
+    "prepublishOnly": "node ../../scripts/check-prerelease.mjs"
+  },
+  "nx": {
+    "targets": {
+      "build": {
+        "outputs": [
+          "{projectRoot}/dist"
+        ]
+      },
+      "test": {
+        "dependsOn": [
+          "build"
+        ],
+        "outputs": []
+      }
+    }
+  }
+}

@@ -104,6 +104,18 @@ jobs:
           latest: 'false'
           github-token: ${{ github.token }}
 
+      - uses: tellok/actions/github-actions/github-release@9df224593aad286a012adc6760fa7de7cb175e22
+        if: steps.publish.outputs.cli_tag != ''
+        with:
+          source: ${{ needs.eligibility.outputs.source_sha }}
+          tag: ${{ steps.publish.outputs.cli_tag }}
+          name: ${{ steps.publish.outputs.cli_name }}
+          notes-file: ${{ steps.publish.outputs.cli_notes }}
+          assets-file: ${{ steps.publish.outputs.cli_assets }}
+          prerelease: 'true'
+          latest: 'false'
+          github-token: ${{ github.token }}
+
   server-image:
     needs: [eligibility, publish]
     if: needs.eligibility.outputs.eligible == 'true'

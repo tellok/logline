@@ -4,6 +4,8 @@
 
 All routes below are relative to `/api/v1/explorer`. Send `Authorization: Bearer <user PAT>` and `Content-Type: application/json` for JSON bodies. The PAT needs `logs:read`, **including for saved-view writes**. The API intersects the token's scope with the owner's current direct and team grants, in the same PostgreSQL snapshot as the query. Neither a project ingestion key nor the administrator credential can read logs. A UI can call these APIs through a trusted backend; never ship the administrator credential to a browser.
 
+Use the [Logline Server CLI](./cli.md) to run these read queries from a terminal.
+
 ## Browse a project
 
 1. `GET /projects?limit=50&offset=0` returns `items: [{projectId,slug,displayName}]`. Select the immutable `projectId`, not the editable label or slug. Omit `query.projectIds` to search all currently readable projects. Explicit selections are all-or-nothing: even one inaccessible/unknown project returns 403.

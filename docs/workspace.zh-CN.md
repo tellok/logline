@@ -2,7 +2,7 @@
 
 [English](./workspace.md) | 简体中文
 
-workspace 包含两个公开 beta 包：`packages/logline`（日志库和可选上报调度器）、`packages/logline-server-reporter`（HTTP 上传包）。`packages/logline-server` 为基于 PostgreSQL 的私有服务包，部署步骤见[运维指南](./server-operations.zh-CN.md)。
+workspace 包含三个公开 beta 包：`packages/logline`（日志库和可选上报调度器）、`packages/logline-server-reporter`（HTTP 上传包）、`packages/logline-server-cli`（[终端查询](./cli.zh-CN.md)）。`packages/logline-server` 为基于 PostgreSQL 的私有服务包，部署步骤见[运维指南](./server-operations.zh-CN.md)。
 
 ## 工具链
 
@@ -23,10 +23,11 @@ pnpm run verify
 pnpm run docs:build
 pnpm run pack:logline
 pnpm run pack:reporter
-node scripts/check-package.mjs --reporter
+pnpm run pack:cli
+node scripts/check-package.mjs --reporter --cli
 ```
 
-`verify` 要求核心库、服务端、上传包和发布契约测试全部执行，不得跳过。它检查格式、构建两个库并准备公开文档副本，随后将两个真实的压缩包解包到临时消费项目中，检查上传包发布时的 peer 依赖版本，以及 ESM、CommonJS 和严格 TypeScript 导入。审核中的产品测试直接执行，避免缓存命中导致临时报告文件缺失。`pack:logline` 在库目录执行 `pnpm pack`，产出根目录下的压缩包。打包生命周期通过 Nx 检查类型与构建，再从根目录刷新 README、许可证、文档和消费端 Skill 副本。生成副本已忽略，应修改根目录源文件。
+`verify` 要求核心库、服务端、上传包、CLI 和发布契约测试全部执行，不得跳过。它检查格式、构建公开包、检查 CLI 可执行文件并准备公开文档副本，随后将两个真实的压缩包解包到临时消费项目中，检查上传包发布时的 peer 依赖版本，以及 ESM、CommonJS 和严格 TypeScript 导入。审核中的产品测试直接执行，避免缓存命中导致临时报告文件缺失。`pack:logline` 在库目录执行 `pnpm pack`，产出根目录下的压缩包。打包生命周期通过 Nx 检查类型与构建，再从根目录刷新 README、许可证、文档和消费端 Skill 副本。生成副本已忽略，应修改根目录源文件。
 
 ## 目录与任务缓存
 
@@ -53,4 +54,4 @@ pnpm run clean
 
 ## 发布
 
-Changesets 独立维护两个公开包的版本：变更集只声明它影响的包，上传包的 `workspace:*` peer 依赖会在核心包变化时按 patch 级联升级。打包时 pnpm 将上传包的 workspace peer 替换为交付的 beta 范围。版本与发布检查请参阅[发布契约](./release-flow.zh-CN.md)。
+Changesets 独立维护公开包的版本：变更集只声明它影响的包，上传包的 `workspace:*` peer 依赖会在核心包变化时按 patch 级联升级。打包时 pnpm 将上传包的 workspace peer 替换为交付的 beta 范围。版本与发布检查请参阅[发布契约](./release-flow.zh-CN.md)。

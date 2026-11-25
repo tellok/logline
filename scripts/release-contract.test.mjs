@@ -8,6 +8,7 @@ import {
   command,
   newestV1,
   pendingChangesets,
+  PUBLIC_PACKAGES,
   prepareFiles,
   releaseChapter,
   root,
@@ -48,7 +49,7 @@ test('workspace preparation versions only the changeset-named package and writes
   const folder = mkdtempSync(join(tmpdir(), 'logline-workspace-version-'));
   const writeJson = (path, value) => writeFileSync(join(folder, path), JSON.stringify(value));
   try {
-    const packages = ['logline', 'logline-server-reporter'];
+    const packages = PUBLIC_PACKAGES;
     for (const path of ['.changeset', '.release', ...packages.map((name) => `packages/${name}`)])
       mkdirSync(join(folder, path), { recursive: true });
     writeJson('package.json', {
@@ -79,7 +80,10 @@ test('workspace preparation versions only the changeset-named package and writes
       changesets: [],
     });
     writeJson('.changeset/translations.json', { 'synthetic-update': 'Synthetic translated release summary.' });
-    writeFileSync(join(folder, '.changeset/synthetic-update.md'), '---\nlogline: patch\n---\n\nSynthetic update.\n');
+    writeFileSync(
+      join(folder, '.changeset/synthetic-update.md'),
+      '---\nlogline-server-cli: patch\n---\n\nSynthetic update.\n',
+    );
     for (const pkg of packages)
       for (const name of ['CHANGELOG.md', 'CHANGELOG.zh-CN.md'])
         writeFileSync(join(folder, 'packages', pkg, name), `# ${pkg}\n\n## 2.0.0-beta.0\n\nSynthetic baseline.\n`);
@@ -91,7 +95,7 @@ test('workspace preparation versions only the changeset-named package and writes
     );
     assert.equal(plan.schema, 3);
     assert.equal(plan.channel, 'beta');
-    assert.deepEqual(plan.changesets[0].packages, ['logline']);
+    assert.deepEqual(plan.changesets[0].packages, ['logline-server-cli']);
     assert.deepEqual(
       plan.packages.map((item) => item.name),
       packages,
@@ -99,7 +103,9 @@ test('workspace preparation versions only the changeset-named package and writes
     assert.ok(plan.packages.every((item) => item.deliver === 'npm' && item.path === `packages/${item.name}`));
     const byName = Object.fromEntries(plan.packages.map((item) => [item.name, item]));
     assert.equal(byName.logline.previousVersion, '2.0.0-beta.0');
-    assert.equal(byName.logline.version, '2.0.0-beta.1');
+    assert.equal(byName.logline.version, '2.0.0-beta.0');
+    assert.equal(byName['logline-server-cli'].previousVersion, '2.0.0-beta.0');
+    assert.equal(byName['logline-server-cli'].version, '2.0.0-beta.1');
     assert.equal(byName['logline-server-reporter'].previousVersion, '2.0.0-beta.0');
     assert.equal(byName['logline-server-reporter'].version, '2.0.0-beta.0');
     assert.equal(JSON.parse(readFileSync(join(folder, 'package.json'), 'utf8')).version, undefined);
@@ -109,7 +115,9 @@ test('workspace preparation versions only the changeset-named package and writes
       assert.equal(existsSync(join(path, 'dist')), false);
     }
     for (const changelog of ['CHANGELOG.md', 'CHANGELOG.zh-CN.md'])
-      assert.ok(releaseChapter(readFileSync(join(folder, 'packages/logline', changelog), 'utf8'), '2.0.0-beta.1'));
+      assert.ok(
+        releaseChapter(readFileSync(join(folder, 'packages/logline-server-cli', changelog), 'utf8'), '2.0.0-beta.1'),
+      );
     assert.throws(() =>
       releaseChapter(
         readFileSync(join(folder, 'packages/logline-server-reporter', 'CHANGELOG.md'), 'utf8'),

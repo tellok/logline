@@ -37,14 +37,15 @@ try {
   );
   const server = checkTap('Server', ['--filter', 'logline-server', 'test']);
   const reporter = checkTap('Reporter', ['--filter', 'logline-server-reporter', 'test']);
+  const cli = checkTap('CLI', ['--filter', 'logline-server-cli', 'test']);
   run(process.execPath, ['scripts/prepare-package.mjs']);
-  run(process.execPath, ['scripts/check-package.mjs', '--reporter']);
+  run(process.execPath, ['scripts/check-package.mjs', '--reporter', '--cli']);
   run(process.execPath, ['scripts/check-packed-reporting.mjs']);
   if (process.env.GITHUB_STEP_SUMMARY) {
     const { appendFileSync } = await import('node:fs');
     appendFileSync(
       process.env.GITHUB_STEP_SUMMARY,
-      `Validated core (${tests.numPassedTests}), server (${server}), reporter (${reporter}) and release-contract (${contracts}) tests with zero skips, types, lint, formatting, build and both packed public packages. Reports remained job-local.\n`,
+      `Validated core (${tests.numPassedTests}), server (${server}), reporter (${reporter}), CLI (${cli}) and release-contract (${contracts}) tests with zero skips, types, lint, formatting, build, CLI executable and packed library checks. Reports remained job-local.\n`,
     );
   }
 } finally {

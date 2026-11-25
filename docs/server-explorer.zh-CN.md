@@ -4,6 +4,8 @@
 
 下文路径均相对于 `/api/v1/explorer`。使用 `Authorization: Bearer <用户 PAT>`，JSON 请求体使用 `Content-Type: application/json`。**包括保存、修改视图在内**的所有操作都需要 `logs:read`。服务端在同一 PostgreSQL 快照中验证令牌操作范围、用户当前的直接授权和团队授权，再执行查询。项目上报密钥和管理员凭据均不能用来读日志。未来的 Web UI 可以通过可信后端调用这些接口；切勿向浏览器发送管理员凭据。
 
+可使用 [Logline Server CLI](./cli.zh-CN.md) 在终端执行这些读查询。
+
 ## 浏览项目
 
 1. `GET /projects?limit=50&offset=0` 返回 `items:[{projectId,slug,displayName}]`。以不可变的 `projectId` 作为选项值，不使用可改名的 slug 或显示名称。省略 `query.projectIds` 表示当前可读的所有项目；显式选择中只要有一个项目不可读或不存在，整个请求即返回 403。

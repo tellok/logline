@@ -31,6 +31,8 @@ const reporter = createLoglineServerReporter({
 configureLogline({ plugins: [reporter] });
 ```
 
+在终端中查询日志可使用 [Logline Server CLI](./docs/cli.zh-CN.md) 和个人访问令牌。`logline-server-cli log list` 默认输出便于阅读的日志，传入 `--raw` 可获取原始 API 响应。
+
 通过管理接口创建项目上报密钥，再构造 `https://<密钥>@<域名>[/部署前缀]/<项目 UUID>`。DSN 只允许向绑定项目写入，不依赖成员身份。浏览器端的 DSN 是公开的，拿到它的人可以提交事件；后端请用独立密钥，可信审计事件应由后端生成。浏览器请求默认接受任意 Origin；如需限制来源，请在服务端配置 `LOGLINE_INGEST_ORIGINS` 精确列表。没有默认云端地址，不持久化待发队列，也不上传 IndexedDB 历史记录。参阅[上报契约](./docs/reporting.zh-CN.md)、[写入接口](./docs/server-ingestion.zh-CN.md)、[管理接口](./docs/server-admin.zh-CN.md)、[日志查询](./docs/server-explorer.zh-CN.md)、[MCP 工具](./docs/server-mcp.zh-CN.md)和[部署及性能指南](./docs/server-operations.zh-CN.md)。
 
 MCP 端点提供以 `logline_server_` 为前缀的只读工具，例如 `logline_server_rows`。
@@ -348,7 +350,7 @@ export default defineConfig({
 
 ## Workspace 开发
 
-仓库采用 pnpm workspace 与 Nx，包含 `logline` 核心库、独立发布的 `logline-server-reporter` 上传包和可自行部署的 `logline-server`。固定 Node.js 24.22.1 LTS 与 pnpm 11.25.0，支持自动切换，禁用严格版本校验。命令、缓存和打包说明见 [Workspace 开发指南](./docs/workspace.zh-CN.md)。
+仓库采用 pnpm workspace 与 Nx，包含 `logline` 核心库、独立发布的 `logline-server-reporter` 上传包、可自行部署的 `logline-server` 和 [Logline Server CLI](./docs/cli.zh-CN.md)。固定 Node.js 24.22.1 LTS 与 pnpm 11.25.0，支持自动切换，禁用严格版本校验。命令、缓存和打包说明见 [Workspace 开发指南](./docs/workspace.zh-CN.md)。
 
 ## 发布流程
 
