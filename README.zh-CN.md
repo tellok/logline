@@ -33,6 +33,8 @@ configureLogline({ plugins: [reporter] });
 
 通过管理接口创建项目上报密钥，再构造 `https://<密钥>@<域名>[/部署前缀]/<项目 UUID>`。DSN 只允许向绑定项目写入，不依赖成员身份。浏览器端的 DSN 是公开的，拿到它的人可以提交事件；后端请用独立密钥，可信审计事件应由后端生成。浏览器请求默认接受任意 Origin；如需限制来源，请在服务端配置 `LOGLINE_INGEST_ORIGINS` 精确列表。没有默认云端地址，不持久化待发队列，也不上传 IndexedDB 历史记录。参阅[上报契约](./docs/reporting.zh-CN.md)、[写入接口](./docs/server-ingestion.zh-CN.md)、[管理接口](./docs/server-admin.zh-CN.md)、[日志查询](./docs/server-explorer.zh-CN.md)、[MCP 工具](./docs/server-mcp.zh-CN.md)和[部署及性能指南](./docs/server-operations.zh-CN.md)。
 
+MCP 端点提供以 `logline_server_` 为前缀的只读工具，例如 `logline_server_rows`。
+
 ## 迁移与单实例
 
 从 v1 升级时，需要将构造函数与存储协议调用调整为 v2 的具名日志函数与插件 API。v2 不会自动导入历史数据库。详见[迁移说明](./docs/migration-v2.zh-CN.md)。

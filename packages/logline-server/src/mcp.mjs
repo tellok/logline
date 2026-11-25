@@ -4,6 +4,7 @@ import { runExplorer } from './explorer.mjs';
 
 // Stateless Streamable HTTP: no sessions, sticky routing or cached grants.
 const VERSION = '2025-06-18';
+const TOOL_PREFIX = 'logline_server_';
 const text = { type: 'string' };
 const strings = { type: 'array', items: text };
 const limit = { type: 'integer', minimum: 1 };
@@ -18,8 +19,7 @@ const query = object({
   },
   where: {
     type: 'object',
-    description:
-      'Predicate {field,op,value}: eq,neq,lt,lte,gt,gte,contains,icontains,regex. Compose with {and:[predicates]}, {or:[predicates]}, or {not:predicate}. Discover field paths via logline_fields.',
+    description: `Predicate {field,op,value}: eq,neq,lt,lte,gt,gte,contains,icontains,regex. Compose with {and:[predicates]}, {or:[predicates]}, or {not:predicate}. Discover field paths via ${TOOL_PREFIX}fields.`,
   },
 });
 const page = { limit, offset: { type: 'integer', minimum: 0 } };
@@ -33,7 +33,7 @@ const eventKey = { projectId: text, eventId: text };
 
 function tool(action, description, properties, required) {
   return {
-    name: `logline_${action}`,
+    name: `${TOOL_PREFIX}${action}`,
     description,
     inputSchema: object(properties, required),
     annotations: { readOnlyHint: true },
@@ -128,7 +128,7 @@ export async function handleMcp({ req, url, db, token, body, send }) {
         return invalid();
       let data;
       try {
-        data = await runExplorer({ db, token, action: definition.name.slice('logline_'.length), body: args });
+        data = await runExplorer({ db, token, action: definition.name.slice(TOOL_PREFIX.length), body: args });
       } catch (error) {
         if (error.status !== 400 && error.status !== 404) throw error;
         // Only public errors: never echo DB exceptions or caller-controlled text here.

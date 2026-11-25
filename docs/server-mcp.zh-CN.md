@@ -12,13 +12,15 @@
 2. 发送不带 `id` 的 `notifications/initialized`；预期 HTTP 202 且无响应体。后续请求发送 `MCP-Protocol-Version: 2025-06-18`。
 3. 调用 `tools/list`，再调用 `tools/call`。支持 `ping`，不提供管理、上传、导出或写入工具。
 
-| 工具                                  | 用途                                                                                                       |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `logline_projects`                    | 列出当前可读项目的 ID、slug 和显示名。使用 `limit`、`offset` 分页。                                        |
-| `logline_selectors`、`logline_fields` | 查看指定查询和时间窗内的项目与环境组合，或字段名称及类型。                                                 |
-| `logline_rows`                        | 按时间、级别、消息或结构化字段检索；可指定列、排序（`asc`/`desc`）、游标和数量。                           |
-| `logline_series`、`logline_groups`    | 在相同权限和过滤条件下计算分桶或分组的计数、总和、平均值。按字段名分组；时间序列可指定 `intervalSeconds`。 |
-| `logline_detail`、`logline_context`   | 用 `{projectId,eventId}` 获取事件；上下文的 `mode` 可取 `nearby`、`trace` 或 `session`。                   |
+服务端发布的工具名统一使用 `logline_server_` 前缀。若客户端在 `tools/call` 中写死了工具名，请更新为此前缀。
+
+| 工具                                                | 用途                                                                                                       |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `logline_server_projects`                           | 列出当前可读项目的 ID、slug 和显示名。使用 `limit`、`offset` 分页。                                        |
+| `logline_server_selectors`、`logline_server_fields` | 查看指定查询和时间窗内的项目与环境组合，或字段名称及类型。                                                 |
+| `logline_server_rows`                               | 按时间、级别、消息或结构化字段检索；可指定列、排序（`asc`/`desc`）、游标和数量。                           |
+| `logline_server_series`、`logline_server_groups`    | 在相同权限和过滤条件下计算分桶或分组的计数、总和、平均值。按字段名分组；时间序列可指定 `intervalSeconds`。 |
+| `logline_server_detail`、`logline_server_context`   | 用 `{projectId,eventId}` 获取事件；上下文的 `mode` 可取 `nearby`、`trace` 或 `session`。                   |
 
 例如，先发现项目，再用不可变 ID 替换 `PROJECT_ID`（不是 slug）：
 
@@ -28,7 +30,7 @@
   "id": 4,
   "method": "tools/call",
   "params": {
-    "name": "logline_rows",
+    "name": "logline_server_rows",
     "arguments": {
       "query": {
         "projectIds": ["PROJECT_ID"],
