@@ -12,7 +12,7 @@ const initialize = {
   params: { protocolVersion: version, clientInfo: { name: 'synthetic-client', version: '1' }, capabilities: {} },
 };
 const rpc = (method, params = {}) => ({ jsonrpc: '2.0', id: 2, method, params });
-const call = (name, args = {}) => rpc('tools/call', { name: `logline_${name}`, arguments: args });
+const call = (name, args = {}) => rpc('tools/call', { name: `logline_server_${name}`, arguments: args });
 
 test('MCP protocol negotiation, read-only inventory, notifications and invalid messages', async () => {
   const db = { query: async () => ({ rows: [{ userId: 'synthetic', allowed: true }] }) };
@@ -38,7 +38,9 @@ test('MCP protocol negotiation, read-only inventory, notifications and invalid m
   const listing = (await dispatch(rpc('tools/list'))).value.result.tools;
   assert.deepEqual(
     listing.map((t) => t.name),
-    ['projects', 'selectors', 'fields', 'rows', 'series', 'groups', 'detail', 'context'].map((n) => 'logline_' + n),
+    ['projects', 'selectors', 'fields', 'rows', 'series', 'groups', 'detail', 'context'].map(
+      (name) => `logline_server_${name}`,
+    ),
   );
   assert.ok(listing.every((t) => t.annotations.readOnlyHint && t.inputSchema.type === 'object'));
   assert.deepEqual(await dispatch({ jsonrpc: '2.0', method: 'notifications/initialized' }), {
@@ -51,6 +53,7 @@ test('MCP protocol negotiation, read-only inventory, notifications and invalid m
   assert.equal((await dispatch(rpc('unknown'))).value.error.code, -32601);
   for (const body of [
     call('delete'),
+    rpc('tools/call', { name: 'logline_projects' }),
     call('rows', { token: 'override' }),
     call('detail', { eventId: 'e' }),
     call('context', null),

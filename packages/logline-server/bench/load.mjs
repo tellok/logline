@@ -186,7 +186,7 @@ async function reader(w) {
     if (action === 'refresh' && cursor) body.cursor = cursor;
     if (action === 'export') Object.assign(body, { format: 'jsonl', columns: ['timestamp', 'message'] });
     if (action === 'mcp')
-      body = { jsonrpc: '2.0', id: i, method: 'tools/call', params: { name: 'logline_rows', arguments: body } };
+      body = { jsonrpc: '2.0', id: i, method: 'tools/call', params: { name: 'logline_server_rows', arguments: body } };
     const t = performance.now(),
       { status, data } = await request(action === 'mcp' ? '/mcp' : `/api/v1/explorer/${action}`, secret, body);
     markStatus(action, status);

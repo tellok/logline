@@ -12,13 +12,15 @@ Use `logline-server` as a remote **Streamable HTTP** MCP server. Set the client 
 2. Send `notifications/initialized` (without `id`); expect HTTP 202 with no body. Send `MCP-Protocol-Version: 2025-06-18` on subsequent requests.
 3. Call `tools/list`, then `tools/call`. `ping` is available. There are no admin, upload, export or write tools.
 
-| Tool                                  | Use                                                                                                                                     |
-| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `logline_projects`                    | Discover current readable projects with IDs, slugs and display names. Use `limit`/`offset` for paging.                                  |
-| `logline_selectors`, `logline_fields` | Inspect project/environment pairs or field names/types for a query and time window.                                                     |
-| `logline_rows`                        | Search by time, severity, message or structured fields. Optional columns, sort (`asc`/`desc`), cursor, limit.                           |
-| `logline_series`, `logline_groups`    | Bucketed or grouped count, sum or average under the same scope and filter. Group by field names; for series, specify `intervalSeconds`. |
-| `logline_detail`, `logline_context`   | Fetch an event by `{projectId,eventId}` or related events with `mode` = `nearby`, `trace` or `session`.                                 |
+The server publishes tool names with the `logline_server_` prefix. Update any hard-coded `tools/call` names to use this prefix.
+
+| Tool                                                | Use                                                                                                                                     |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `logline_server_projects`                           | Discover current readable projects with IDs, slugs and display names. Use `limit`/`offset` for paging.                                  |
+| `logline_server_selectors`, `logline_server_fields` | Inspect project/environment pairs or field names/types for a query and time window.                                                     |
+| `logline_server_rows`                               | Search by time, severity, message or structured fields. Optional columns, sort (`asc`/`desc`), cursor, limit.                           |
+| `logline_server_series`, `logline_server_groups`    | Bucketed or grouped count, sum or average under the same scope and filter. Group by field names; for series, specify `intervalSeconds`. |
+| `logline_server_detail`, `logline_server_context`   | Fetch an event by `{projectId,eventId}` or related events with `mode` = `nearby`, `trace` or `session`.                                 |
 
 For example, after discovery replace `PROJECT_ID` with the immutable ID (not the slug):
 
@@ -28,7 +30,7 @@ For example, after discovery replace `PROJECT_ID` with the immutable ID (not the
   "id": 4,
   "method": "tools/call",
   "params": {
-    "name": "logline_rows",
+    "name": "logline_server_rows",
     "arguments": {
       "query": {
         "projectIds": ["PROJECT_ID"],
