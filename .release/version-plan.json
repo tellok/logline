@@ -1,31 +1,38 @@
 {
   "schema": 3,
-  "baseSha": "7145ca43474dfcdfe378ccb86f19452870012cbb",
+  "baseSha": "f7ad408c921c4ba407f2179bb2498a465d800527",
   "channel": "beta",
   "cli": "2.29.7",
   "packages": [
     {
       "name": "logline",
       "path": "packages/logline",
-      "previousVersion": "2.0.0-beta.1",
+      "previousVersion": "2.0.0-beta.2",
       "version": "2.0.0-beta.2",
       "deliver": "npm"
     },
     {
       "name": "logline-server-reporter",
       "path": "packages/logline-server-reporter",
-      "previousVersion": "2.0.0-beta.1",
+      "previousVersion": "2.0.0-beta.2",
       "version": "2.0.0-beta.2",
+      "deliver": "npm"
+    },
+    {
+      "name": "logline-server-cli",
+      "path": "packages/logline-server-cli",
+      "previousVersion": "2.0.0-beta.0",
+      "version": "2.0.0-beta.1",
       "deliver": "npm"
     }
   ],
   "changesets": [
     {
-      "id": "vite-build-log-enable",
-      "packages": ["logline"],
-      "sha256": "867bcaf49b3491b48fa84adb91ffbc326933ceb46adb77960aa7a952c163ce57",
-      "summary": "Add `enable` to the Vite plugin and `VITE_LOGLINE_ENABLE` to its environment settings so CI builds can strip every recognized Logline call, including `ERROR`.",
-      "translation": "Vite 构建新增 enable 和 VITE_LOGLINE_ENABLE 开关，设为 false 可移除所有可识别的 Logline 调用，包括 ERROR。"
+      "id": "logline-server-cli",
+      "packages": ["logline-server-cli"],
+      "sha256": "b783cf93fff3f88c7a4c19144242428e669a6e0da16004d56b839a7cc644d221",
+      "summary": "Add a terminal client for authenticated Logline Explorer queries, with readable logs by default and an option to emit the original JSON response.",
+      "translation": "新增 logline-server-cli，可用个人访问令牌查询自托管服务，默认以终端友好格式显示日志，并可输出原始 JSON。"
     }
   ]
 }

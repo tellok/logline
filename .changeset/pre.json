@@ -4,12 +4,14 @@
   "initialVersions": {
     "logline": "1.1.5",
     "logline-server": "2.0.0-beta.0",
-    "logline-server-reporter": "2.0.0-beta.0"
+    "logline-server-reporter": "2.0.0-beta.0",
+    "logline-server-cli": "2.0.0-beta.0"
   },
   "changesets": [
     "documentation-pages",
     "event-tags",
     "first-v2-beta",
+    "logline-server-cli",
     "self-hosted-reporting",
     "vite-build-log-enable",
     "vite5-compatibility",
