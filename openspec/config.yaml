@@ -1,0 +1,8 @@
+schema: spec-driven
+
+context: |
+  Write OpenSpec artifacts in English.
+
+rules:
+  specs:
+    - Describe observable behavior and cover relevant failure, compatibility, and lifecycle cases.

@@ -29,6 +29,16 @@ node scripts/check-package.mjs --reporter --cli
 
 `verify` requires every core, server, uploader, CLI, and release-contract test to run without skips. It checks formatting, builds the public packages, checks the CLI executable, and stages public documentation. It then packs and opens both real tarballs in a temporary consumer, verifies the uploader's published peer version, and exercises ESM, CommonJS and strict TypeScript imports. Product tests run directly during this audit so a temporary report path is never lost to a cache hit. `pack:logline` runs `pnpm pack` inside the library and puts its tarball at the repository root. Its lifecycle type-checks and builds through Nx, then refreshes README, license, documentation, and consumer Skill copies from the root. Generated copies are ignored; edit their root sources.
 
+## OpenSpec
+
+The [baseline specifications](https://github.com/tellok/logline/tree/master/openspec/specs) record the behavior implemented on the default branch. For changes to behavior or public APIs, install the CLI with `npm install -g @fission-ai/openspec@2.2.0` and use the repository's OpenSpec skills. Archiving an implemented change syncs its requirements into the baseline and moves the change to `openspec/changes/archive/`.
+
+From the repository root, validate the current baseline:
+
+```sh
+npm exec --yes --package=@fission-ai/openspec@2.2.0 -- openspec validate --specs --strict
+```
+
 ## Layout and task caching
 
 - `packages/logline`: library source, Vite configuration, strict TypeScript configuration, manifest, and bilingual changelogs.

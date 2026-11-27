@@ -29,6 +29,16 @@ node scripts/check-package.mjs --reporter --cli
 
 `verify` 要求核心库、服务端、上传包、CLI 和发布契约测试全部执行，不得跳过。它检查格式、构建公开包、检查 CLI 可执行文件并准备公开文档副本，随后将两个真实的压缩包解包到临时消费项目中，检查上传包发布时的 peer 依赖版本，以及 ESM、CommonJS 和严格 TypeScript 导入。审核中的产品测试直接执行，避免缓存命中导致临时报告文件缺失。`pack:logline` 在库目录执行 `pnpm pack`，产出根目录下的压缩包。打包生命周期通过 Nx 检查类型与构建，再从根目录刷新 README、许可证、文档和消费端 Skill 副本。生成副本已忽略，应修改根目录源文件。
 
+## OpenSpec
+
+[基线规格](https://github.com/tellok/logline/tree/master/openspec/specs)记录默认分支已实现的行为。变更行为或公开 API 时，先用 `npm install -g @fission-ai/openspec@2.2.0` 安装 CLI，再使用仓库内的 OpenSpec 技能。归档已实现的变更时，将其需求同步到基线，并将变更移入 `openspec/changes/archive/`。
+
+在仓库根目录验证当前基线：
+
+```sh
+npm exec --yes --package=@fission-ai/openspec@2.2.0 -- openspec validate --specs --strict
+```
+
 ## 目录与任务缓存
 
 - `packages/logline`：库源码、Vite 配置、严格 TypeScript 配置、包清单和双语更新日志。

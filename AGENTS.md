@@ -1,16 +1,7 @@
-# Logline v2 contributor instructions
+# Global collaboration guidelines
 
-- The default branch maintains v2 beta. Preserve `v1` for v1 maintenance.
-- Use English for communication, source code, comments, diagnostics, tests, and commit messages.
-- Keep the default README and documentation in English and provide linked Simplified Chinese versions.
-- Keep TypeScript strict. Do not introduce explicit any or unsafe unknown assertions; use type guards and undefined for internal optional values.
-- Document core behavior, parameters, return values, and side effects in English.
-- Run `pnpm run type-check`, then scoped ESLint fixes, tests, formatting, `pnpm pack`, and `node scripts/check-package.mjs` before pushing. Version PR preparation must not build or publish the product.
-- Update README, documentation, and the bundled consumer Skill when behavior or public APIs change.
-- Experimental npm versions must use a 2.x beta version and the beta tag. Keep latest on the newest published v1 subversion.
+## Complete verification in the current turn
 
-## Public repository privacy
-
-- Use a GitHub noreply email for both author and committer identity; verify both before pushing. Version PR preparation must not build or publish the product.
-- Do not include private repository names or source revision identifiers, internal service details, credentials, or personal machine paths in public files.
-- Build test fixtures from clearly synthetic values instead of copying identifiers or payloads from real environments.
+- This rule applies to every task. Before ending the current turn, proactively verify every unresolved or unverified point within the scope of the request that could affect the conclusion or deliverable. Use the information, tools, and permissions already available to resolve everything you can in this turn and deliver the verified result directly.
+- When information is insufficient, evidence conflicts, or a check fails, keep looking for reliable sources, cross-check, retry, or use another feasible method. When a task covers multiple items or checks, verify each one. Complete any verification you can do yourself in this turn without deferring it, listing it as a follow-up, or handing it back to the user.
+- If a concrete blocker remains after you exhaust reasonably available options, explain exactly what is blocked, what you checked, and how it affects the conclusion or deliverable. Ask only for the information or authorization you need to proceed. State any remaining uncertainty honestly.
